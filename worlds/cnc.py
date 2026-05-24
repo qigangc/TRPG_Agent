@@ -7,11 +7,13 @@ from worlds.base import WorldBase
 class CNCWorld(WorldBase):
     world_name = "国产奇幻"
     world_id = "cnc"
+    world_emoji = "🐉"
     tone = "搞笑、轻快、接地气"
     narrative_style = "沙雕魔幻，适度打破第四面墙，吐槽玩家选择"
     default_setting = "现代中国奇幻世界，修仙穿越混合体，外卖小哥也能修仙，地铁上可能遇到妖精。"
     gm_persona = "你是一位风格独特的游戏主持人，喜欢吐槽玩家的选择，偶尔打破第四面墙，但绝不亏待有趣的操作。"
     check_keyword = "挑战"
+    description = "现代修仙穿越沙雕世界，外卖小哥也能修仙，地铁上可能遇到妖精。适合喜欢轻松搞笑的玩家。"
 
     def get_system_prompt(self, character: Character) -> str:
         return f"""你是一位风格独特的游戏主持人，正在主持一场国产沙雕奇幻冒险。

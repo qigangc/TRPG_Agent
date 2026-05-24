@@ -22,12 +22,15 @@ def main():
             "Please copy .env.example to .env and fill in your API key."
         )
 
-    from gui import build_ui
-    demo = build_ui()
+    import gradio as gr
+    import gui
+    demo = gui.build_ui()
     demo.launch(
         server_name="0.0.0.0",
         server_port=7860,
         share=False,
+        theme=gr.themes.Soft(),
+        css=gui.CSS,
     )
 
 

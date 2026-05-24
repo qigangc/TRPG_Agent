@@ -9,11 +9,13 @@ from rules.character import Character
 class WorldBase(ABC):
     world_name: str = ""
     world_id: str = ""
+    world_emoji: str = ""
     tone: str = ""
     narrative_style: str = ""
     default_setting: str = ""
     gm_persona: str = ""
     check_keyword: str = "检定"
+    description: str = ""
 
     @abstractmethod
     def get_system_prompt(self, character: Character) -> str:
