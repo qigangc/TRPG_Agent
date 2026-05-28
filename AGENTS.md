@@ -42,7 +42,7 @@ main.py → gui.py (module-level GameEngine singleton) → game_engine.py → ll
   - `[激励骰:N]` → `character.inspiration += N` (DND only)
   - `[突破:属性]` → `setattr(character, attr, current+2)` (CNC only)
 - **Attribute names are English internally** (`strength` etc.) but Chinese in AI prompts/display. Mapping: `llm_client._ATTR_MAP_CN_TO_EN`.
-- **Gradio 6.x**: `Chatbot` has no `type` param; `theme` goes in `launch()`, not `Blocks()`.
+- **Gradio 6.x**: `Chatbot` has no `type` param; `theme`, `css`, `js` go in `launch()`, not `Blocks()`.
 - **Windows**: console is GBK — emoji/Chinese in `print()` will crash. Logging and Gradio web UI are fine.
 - **Leftover fields**: `Character.sanity` and `Character.madness_count` exist but are unused (from a removed Cthulhu world). `card_html()` still renders them if non-zero.
 - **No `requirements.txt` version pins**: `gradio>=4.0.0`, `zhipuai>=2.0.0`, `python-dotenv>=1.0.0`.
@@ -63,7 +63,13 @@ main.py → gui.py (module-level GameEngine singleton) → game_engine.py → ll
 
 ## GUI page system
 
-4 `gr.Column`s toggled via `visible`. `_nav()` returns 4 `gr.update(visible=...)`. All nav buttons output to `all_pages` list. To add a page: add Column, append to `all_pages`, add entry to `_nav()`.
+4 `gr.Tab`s inside `gr.Tabs(selected=...)`. Navigation returns `gr.Tabs(selected="tab_id")` to switch tabs programmatically. Tab IDs: `main`, `save`, `char`, `game`.
+
+URL routing via JS (`TAB_ROUTE_JS` in `gui.py`): `/main`, `/save`, `/createCharacter`, `/game`. Tab clicks update browser URL; navigating to a URL clicks the matching tab.
+
+**Gradio 6.x critical**: `css` and `js` params go in `launch()`, not `Blocks()`. `theme` also goes in `launch()`.
+
+To add a new page: add `gr.Tab("Label", id="xxx")` inside the Tabs block; add `idToRoute`/`routeToId` entries in `TAB_ROUTE_JS`; return `gr.Tabs(selected="xxx")` from button handlers.
 
 ## Config
 

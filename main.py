@@ -31,6 +31,7 @@ def main():
         share=False,
         theme=gr.themes.Soft(),
         css=gui.CSS,
+        js=gui.TAB_ROUTE_JS,
     )
 
 
