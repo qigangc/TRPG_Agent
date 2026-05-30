@@ -15,6 +15,7 @@ PATTERN_CHECK = re.compile(r"\[(?:检定|挑战):(\w+)\s+DC=(\d+)\]")
 PATTERN_EXP = re.compile(r"\[经验:(\d+)\]")
 PATTERN_INSPIRATION = re.compile(r"\[激励骰:(\d+)\]")
 PATTERN_BREAKTHROUGH = re.compile(r"\[突破:(\w+)\]")
+PATTERN_QUICK_ACTION = re.compile(r"\[快捷:(.+?)\]")
 
 
 class LLMClient:
@@ -110,12 +111,18 @@ class LLMClient:
         return results
 
     @staticmethod
+    def parse_quick_actions(text: str) -> List[str]:
+        """Parse quick action suggestions from AI output, e.g. [快捷:搜查房间里的橡木书桌]."""
+        return [m.group(1).strip() for m in PATTERN_QUICK_ACTION.finditer(text)]
+
+    @staticmethod
     def strip_tags(text: str) -> str:
         """Remove all tagged commands from display text."""
         cleaned = PATTERN_CHECK.sub("", text)
         cleaned = PATTERN_EXP.sub("", cleaned)
         cleaned = PATTERN_INSPIRATION.sub("", cleaned)
         cleaned = PATTERN_BREAKTHROUGH.sub("", cleaned)
+        cleaned = PATTERN_QUICK_ACTION.sub("", cleaned)
         return cleaned.strip()
 
 

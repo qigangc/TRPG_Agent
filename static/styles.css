@@ -1,0 +1,421 @@
+/* ============================================================
+   TRPG Agent — Dark Theme Stylesheet
+   Palette: #0f0f1e #1a1a2e #16213e #2c3e50 #34495e
+            #ecf0f1 #95a5a6 #7f8c8d
+            #3498db #2980b9 #2ecc71 #e74c3c #f39c12
+   ============================================================ */
+
+/* ---------- Reset & base ---------- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: #0f0f1e;
+  color: #ecf0f1;
+  font-family: system-ui, "Microsoft YaHei", "PingFang SC", sans-serif;
+  font-size: 15px;
+  line-height: 1.6;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: #3498db;
+  text-decoration: none;
+}
+
+a:hover {
+  color: #5dade2;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  color: #ecf0f1;
+  margin: 0 0 12px 0;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+p {
+  margin: 0 0 12px 0;
+}
+
+hr {
+  border: none;
+  border-top: 1px solid #34495e;
+  margin: 20px 0;
+}
+
+/* ---------- Top navigation ---------- */
+.topnav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: #1a1a2e;
+  padding: 0 24px;
+  border-bottom: 1px solid #34495e;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+
+.topnav a {
+  display: inline-block;
+  padding: 16px 20px;
+  color: #95a5a6;
+  text-decoration: none;
+  font-size: 15px;
+  font-weight: 500;
+  border-bottom: 2px solid transparent;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.topnav a:hover {
+  color: #ecf0f1;
+}
+
+.topnav a.active {
+  color: #ecf0f1;
+  border-bottom: 2px solid #3498db;
+}
+
+/* ---------- Page container ---------- */
+.page-container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+/* ---------- Card ---------- */
+.card {
+  border: 1px solid #34495e;
+  border-radius: 10px;
+  padding: 16px;
+  background: #1a1a2e;
+  margin-bottom: 16px;
+}
+
+.card h2,
+.card h3 {
+  margin-top: 0;
+}
+
+.card-grid {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.card-grid > .card {
+  flex: 1 1 240px;
+  min-width: 0;
+  margin-bottom: 0;
+}
+
+/* ---------- Buttons ---------- */
+.btn {
+  padding: 8px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  border: none;
+  font-size: 14px;
+  font-family: inherit;
+  font-weight: 500;
+  line-height: 1.4;
+  display: inline-block;
+  text-align: center;
+  text-decoration: none;
+  transition: background-color 0.15s ease, opacity 0.15s ease;
+}
+
+.btn + .btn {
+  margin-left: 8px;
+}
+
+.btn-primary {
+  background: #3498db;
+  color: #ffffff;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: #2980b9;
+}
+
+.btn-secondary {
+  background: #2c3e50;
+  color: #ecf0f1;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: #34495e;
+}
+
+.btn-danger {
+  background: #e74c3c;
+  color: #ffffff;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: #c0392b;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ---------- Chat ---------- */
+.chat-log {
+  max-height: 500px;
+  overflow-y: auto;
+  padding: 16px;
+  background: #1a1a2e;
+  border: 1px solid #34495e;
+  border-radius: 8px;
+  margin-bottom: 12px;
+}
+
+.chat-msg {
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  border-radius: 8px;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  line-height: 1.55;
+}
+
+.chat-msg:last-child {
+  margin-bottom: 0;
+}
+
+.chat-msg--user {
+  background: #2c3e50;
+  border-left: 3px solid #3498db;
+}
+
+.chat-msg--ai {
+  background: #1a1a2e;
+  border: 1px solid #2c3e50;
+  border-left: 3px solid #2ecc71;
+}
+
+.chat-msg--system {
+  background: #1a1a2e;
+  border-left: 3px solid #f39c12;
+  color: #f39c12;
+  font-style: italic;
+}
+
+/* ---------- Scene bar (ported from gui.py:35-43) ---------- */
+.scene-bar {
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  border: 1px solid #34495e;
+  border-radius: 10px;
+  padding: 12px 16px;
+  margin-bottom: 8px;
+  color: #ecf0f1;
+  font-family: 'Segoe UI', system-ui, "Microsoft YaHei", "PingFang SC", sans-serif;
+}
+
+/* ---------- Empty state ---------- */
+.empty-state {
+  text-align: center;
+  color: #7f8c8d;
+  padding: 40px 20px;
+  font-size: 14px;
+}
+
+/* ---------- Forms ---------- */
+.form-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.form-row--inline {
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+}
+
+.form-label {
+  display: block;
+  color: #ecf0f1;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.form-label .form-hint {
+  color: #95a5a6;
+  font-weight: 400;
+  margin-left: 6px;
+  font-size: 13px;
+}
+
+.form-input,
+.form-textarea,
+.form-select {
+  width: 100%;
+  padding: 10px 12px;
+  background: #0f0f1e;
+  color: #ecf0f1;
+  border: 1px solid #34495e;
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.4;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.form-input:focus,
+.form-textarea:focus,
+.form-select:focus {
+  border-color: #3498db;
+}
+
+.form-input::placeholder,
+.form-textarea::placeholder {
+  color: #7f8c8d;
+}
+
+.form-textarea {
+  min-height: 90px;
+  resize: vertical;
+}
+
+/* ---------- Slider (range input) — character creation ---------- */
+.form-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  background: #2c3e50;
+  border-radius: 999px;
+  outline: none;
+  margin: 8px 0;
+  cursor: pointer;
+}
+
+.form-slider::-webkit-slider-runnable-track {
+  height: 6px;
+  background: #2c3e50;
+  border-radius: 999px;
+}
+
+.form-slider::-moz-range-track {
+  height: 6px;
+  background: #2c3e50;
+  border-radius: 999px;
+  border: none;
+}
+
+.form-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  background: #3498db;
+  border: 2px solid #ecf0f1;
+  border-radius: 50%;
+  cursor: pointer;
+  margin-top: -6px;
+  transition: background-color 0.15s ease, transform 0.1s ease;
+}
+
+.form-slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  background: #3498db;
+  border: 2px solid #ecf0f1;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: background-color 0.15s ease, transform 0.1s ease;
+}
+
+.form-slider:hover::-webkit-slider-thumb {
+  background: #2980b9;
+}
+
+.form-slider:hover::-moz-range-thumb {
+  background: #2980b9;
+}
+
+.form-slider:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.form-slider-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.form-slider-value {
+  min-width: 36px;
+  text-align: right;
+  color: #ecf0f1;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+/* ---------- Utility helpers ---------- */
+.text-muted   { color: #95a5a6; }
+.text-success { color: #2ecc71; }
+.text-danger  { color: #e74c3c; }
+.text-warning { color: #f39c12; }
+.text-center  { text-align: center; }
+.mt-0  { margin-top: 0; }
+.mb-0  { margin-bottom: 0; }
+.mt-16 { margin-top: 16px; }
+.mb-16 { margin-bottom: 16px; }
+
+/* ---------- Scrollbar (webkit) ---------- */
+.chat-log::-webkit-scrollbar {
+  width: 8px;
+}
+
+.chat-log::-webkit-scrollbar-track {
+  background: #0f0f1e;
+  border-radius: 4px;
+}
+
+.chat-log::-webkit-scrollbar-thumb {
+  background: #34495e;
+  border-radius: 4px;
+}
+
+.chat-log::-webkit-scrollbar-thumb:hover {
+  background: #2c3e50;
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 640px) {
+  .topnav {
+    padding: 0 12px;
+    overflow-x: auto;
+  }
+  .topnav a {
+    padding: 14px 12px;
+    font-size: 14px;
+    white-space: nowrap;
+  }
+  .page-container {
+    padding: 12px;
+  }
+  .card-grid {
+    gap: 12px;
+  }
+}

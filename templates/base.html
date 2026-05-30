@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}TRPG Agent{% endblock %}</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <nav class="topnav">
+    <a href="/main" class="{% if current_page == 'main' %}active{% endif %}">选择世界</a>
+    <a href="/save" class="{% if current_page == 'save' %}active{% endif %}">存档管理</a>
+    <a href="/createCharacter" class="{% if current_page == 'createCharacter' %}active{% endif %}">创建角色</a>
+    <a href="/game" class="{% if current_page == 'game' %}active{% endif %}">冒险</a>
+  </nav>
+  <main class="page-container">{% block content %}{% endblock %}</main>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

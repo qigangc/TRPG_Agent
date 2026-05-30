@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 def main():
-    logger.info("Starting TRPG Agent...")
+    logger.info("Starting TRPG Agent (FastAPI)...")
 
     if not Config.ZHIPU_API_KEY:
         logger.warning(
@@ -22,16 +22,14 @@ def main():
             "Please copy .env.example to .env and fill in your API key."
         )
 
-    import gradio as gr
-    import gui
-    demo = gui.build_ui()
-    demo.launch(
-        server_name="0.0.0.0",
-        server_port=7860,
-        share=False,
-        theme=gr.themes.Soft(),
-        css=gui.CSS,
-        js=gui.TAB_ROUTE_JS,
+    import uvicorn
+    logger.info("TRPG running at http://127.0.0.1:7860/main")
+    uvicorn.run(
+        "app:app",
+        host="127.0.0.1",
+        port=7860,
+        workers=1,
+        log_level="info",
     )
 
 

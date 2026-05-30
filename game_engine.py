@@ -118,12 +118,22 @@ class GameEngine:
         self.messages.append({"role": "assistant", "content": full_response})
         self._process_ai_output(full_response)
 
+    def _update_scene(self, text: str) -> None:
+        """Extract scene description from AI output and update character.current_scene."""
+        import re
+        scene_match = re.search(r"【场景[：:]\s*(.+?)】", text)
+        if not scene_match:
+            scene_match = re.search(r"\[场景[：:]\s*(.+?)\]", text)
+        if scene_match:
+            self.character.current_scene = scene_match.group(1).strip()
+
     def _process_ai_output(self, text: str) -> None:
-        """Process tagged commands in AI output (exp, inspiration, breakthrough)."""
+        """Process tagged commands in AI output (exp, inspiration, breakthrough, scene)."""
         if not self.has_character:
             return
 
         llm = self._ensure_llm()
+        self._update_scene(text)
 
         for amount in llm.parse_exp_rewards(text):
             leveled = self.character.gain_exp(amount)

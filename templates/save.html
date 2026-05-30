@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}存档管理 - TRPG Agent{% endblock %}
+{% block content %}
+<h1>存档管理</h1>
+<div class="card">
+  <h2>读取存档</h2>
+  <button id="refresh-saves-btn" class="btn btn-secondary">刷新存档列表</button>
+  <ul id="save-list"></ul>
+  <button id="load-save-btn" class="btn btn-primary" disabled>加载选中存档</button>
+  <div id="load-status"></div>
+</div>
+<div class="card">
+  <h2>新的冒险</h2>
+  <p>创建新角色开始冒险</p>
+  <button id="new-character-btn" class="btn btn-primary">创建新角色</button>
+</div>
+{% endblock %}
+{% block scripts %}<script type="module" src="/static/save.js"></script>{% endblock %}
