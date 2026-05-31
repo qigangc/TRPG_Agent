@@ -1,9 +1,11 @@
 import os
 import sys
 import json
+import time
 import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import Optional
 
 sys.path.insert(0, str(Path(__file__).parent))
 
@@ -12,15 +14,16 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import JSONResponse, RedirectResponse, StreamingResponse
 from starlette.requests import Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from starlette.concurrency import iterate_in_threadpool
 
 from game_engine import GameEngine
 from llm_client import LLMClient
 from worlds import WORLD_REGISTRY
-from config import Config
+from config import Config, ENV_PATH
 from rules.character import PRESET_CHARACTERS
 from storage import list_saves
+from env_writer import upsert_env
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -145,6 +148,32 @@ async def game_page(request: Request):
     if not engine.has_character:
         return RedirectResponse("/createCharacter", status_code=302)
     return templates.TemplateResponse("game.html", {"request": request, "current_page": "game"})
+
+
+# ---------- 设置页面（入口 + 两个子页） ----------
+
+@app.get("/settings")
+async def settings_page(request: Request):
+    return templates.TemplateResponse(
+        "settings.html",
+        {"request": request, "current_page": "settings"},
+    )
+
+
+@app.get("/settings/model")
+async def settings_model_page(request: Request):
+    return templates.TemplateResponse(
+        "settings_model.html",
+        {"request": request, "current_page": "settings"},
+    )
+
+
+@app.get("/settings/rules")
+async def settings_rules_page(request: Request):
+    return templates.TemplateResponse(
+        "settings_rules.html",
+        {"request": request, "current_page": "settings"},
+    )
 
 
 class CreateCharacterRequest(BaseModel):
@@ -325,3 +354,254 @@ async def api_chat_stream(body: ChatStreamBody, request: Request):
             "Connection": "keep-alive",
         },
     )
+
+
+# ============================================================
+# 设置 API：模型配置 + 游戏规则参数
+# ============================================================
+
+# 模型名预设下拉项；用户也可直接在输入框里写自定义名
+MODEL_PRESETS = ["glm-4", "glm-4-plus", "glm-4-air", "glm-4-flash", "glm-4-long"]
+
+# 模型配置参数的合法范围（同时用于校验与前端 hint）
+MODEL_FIELD_BOUNDS = {
+    "temperature": (0.0, 2.0),
+    "max_tokens": (128, 8192),
+    "max_history": (1, 100),
+    "max_retries": (1, 10),
+    "stream_timeout": (5, 600),
+}
+
+# 规则参数的合法范围
+RULES_FIELD_BOUNDS = {
+    "initial_attribute_points": (0, 60),
+    "exp_threshold": (10, 1000),
+}
+
+
+def _mask_api_key(key: str) -> str:
+    """脱敏 API Key：前 4 + 中间星号 + 后 4。"""
+    if not key:
+        return ""
+    if len(key) <= 8:
+        return "*" * len(key)
+    return f"{key[:4]}{'*' * (len(key) - 8)}{key[-4:]}"
+
+
+class ModelConfigUpdate(BaseModel):
+    api_key: Optional[str] = Field(default=None, description="留空表示不修改")
+    model_name: Optional[str] = None
+    temperature: Optional[float] = None
+    max_tokens: Optional[int] = None
+    max_history: Optional[int] = None
+    max_retries: Optional[int] = None
+    stream_timeout: Optional[int] = None
+    persist_to_env: bool = False
+
+
+class ModelTestRequest(BaseModel):
+    api_key: Optional[str] = None
+    model_name: Optional[str] = None
+
+
+class RulesConfigUpdate(BaseModel):
+    initial_attribute_points: Optional[int] = None
+    exp_threshold: Optional[int] = None
+    persist_to_env: bool = False
+
+
+def _validate_range(field: str, value, bounds: dict) -> Optional[str]:
+    """范围校验。返回错误信息（None 表示通过）。"""
+    if value is None:
+        return None
+    lo, hi = bounds[field]
+    try:
+        v = float(value)
+    except (TypeError, ValueError):
+        return f"{field} 必须为数字"
+    if v < lo or v > hi:
+        return f"{field} 必须在 [{lo}, {hi}] 范围内"
+    return None
+
+
+@app.get("/api/settings/model")
+async def get_model_settings():
+    return {
+        "provider": "zhipuai",
+        "api_key_masked": _mask_api_key(Config.ZHIPU_API_KEY),
+        "api_key_present": bool(Config.ZHIPU_API_KEY),
+        "model_name": Config.MODEL_NAME,
+        "model_presets": MODEL_PRESETS,
+        "temperature": Config.TEMPERATURE,
+        "max_tokens": Config.MAX_TOKENS,
+        "max_history": Config.MAX_HISTORY,
+        "max_retries": Config.MAX_RETRIES,
+        "stream_timeout": Config.STREAM_TIMEOUT,
+        "bounds": MODEL_FIELD_BOUNDS,
+        "env_file_path": str(ENV_PATH),
+    }
+
+
+@app.post("/api/settings/model")
+async def update_model_settings(body: ModelConfigUpdate):
+    # 1) 范围校验
+    errors = {}
+    for field in ("temperature", "max_tokens", "max_history", "max_retries", "stream_timeout"):
+        msg = _validate_range(field, getattr(body, field), MODEL_FIELD_BOUNDS)
+        if msg:
+            errors[field] = msg
+    if body.model_name is not None and not body.model_name.strip():
+        errors["model_name"] = "模型名称不能为空"
+    if errors:
+        return JSONResponse({"ok": False, "errors": errors}, status_code=400)
+
+    # 2) 应用到 Config 类属性
+    applied = {}
+    llm_reinit_needed = False
+
+    if body.api_key is not None and body.api_key != "":
+        Config.ZHIPU_API_KEY = body.api_key
+        applied["api_key"] = "<已更新>"
+        llm_reinit_needed = True
+
+    if body.model_name is not None:
+        new_name = body.model_name.strip()
+        if new_name != Config.MODEL_NAME:
+            Config.MODEL_NAME = new_name
+            llm_reinit_needed = True
+        applied["model_name"] = Config.MODEL_NAME
+
+    if body.temperature is not None:
+        Config.TEMPERATURE = float(body.temperature)
+        applied["temperature"] = Config.TEMPERATURE
+    if body.max_tokens is not None:
+        Config.MAX_TOKENS = int(body.max_tokens)
+        applied["max_tokens"] = Config.MAX_TOKENS
+    if body.max_history is not None:
+        Config.MAX_HISTORY = int(body.max_history)
+        applied["max_history"] = Config.MAX_HISTORY
+    if body.max_retries is not None:
+        Config.MAX_RETRIES = int(body.max_retries)
+        applied["max_retries"] = Config.MAX_RETRIES
+    if body.stream_timeout is not None:
+        Config.STREAM_TIMEOUT = int(body.stream_timeout)
+        applied["stream_timeout"] = Config.STREAM_TIMEOUT
+
+    # 3) 模型名 / Key 变化 → 重置 LLM 实例，下一次 chat 重建
+    if llm_reinit_needed:
+        engine.llm = None
+
+    # 4) 可选持久化到 .env
+    persisted = False
+    if body.persist_to_env:
+        env_updates = {}
+        if body.api_key is not None and body.api_key != "":
+            env_updates["ZHIPU_API_KEY"] = body.api_key
+        if body.model_name is not None:
+            env_updates["MODEL_NAME"] = body.model_name.strip()
+        if body.temperature is not None:
+            env_updates["TEMPERATURE"] = str(float(body.temperature))
+        if body.max_tokens is not None:
+            env_updates["MAX_TOKENS"] = str(int(body.max_tokens))
+        if body.max_history is not None:
+            env_updates["MAX_HISTORY"] = str(int(body.max_history))
+        if body.max_retries is not None:
+            env_updates["MAX_RETRIES"] = str(int(body.max_retries))
+        if body.stream_timeout is not None:
+            env_updates["STREAM_TIMEOUT"] = str(int(body.stream_timeout))
+        try:
+            upsert_env(ENV_PATH, env_updates)
+            persisted = True
+        except OSError as e:
+            return JSONResponse(
+                {"ok": True, "applied": applied, "llm_reinitialized": llm_reinit_needed,
+                 "persisted": False, "persist_error": str(e)},
+                status_code=200,
+            )
+
+    return {
+        "ok": True,
+        "applied": applied,
+        "llm_reinitialized": llm_reinit_needed,
+        "persisted": persisted,
+    }
+
+
+@app.post("/api/settings/model/test")
+async def test_model_connection(body: ModelTestRequest):
+    """用临时参数 ping 一次模型，验证 Key 与模型名可用。不修改 Config。"""
+    api_key = (body.api_key or "").strip() or Config.ZHIPU_API_KEY
+    model_name = (body.model_name or "").strip() or Config.MODEL_NAME
+
+    if not api_key:
+        return JSONResponse({"ok": False, "error": "API Key 为空"}, status_code=400)
+
+    try:
+        from zhipuai import ZhipuAI
+        client = ZhipuAI(api_key=api_key)
+        t0 = time.time()
+        resp = client.chat.completions.create(
+            model=model_name,
+            messages=[{"role": "user", "content": "ping"}],
+            max_tokens=8,
+            temperature=0.1,
+            stream=False,
+        )
+        latency_ms = int((time.time() - t0) * 1000)
+        sample = ""
+        try:
+            sample = (resp.choices[0].message.content or "").strip()[:60]
+        except Exception:
+            sample = ""
+        return {"ok": True, "latency_ms": latency_ms, "sample": sample, "model": model_name}
+    except Exception as e:
+        logger.warning("model test failed: %s", e)
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=200)
+
+
+@app.get("/api/settings/rules")
+async def get_rules_settings():
+    return {
+        "initial_attribute_points": Config.INITIAL_ATTRIBUTE_POINTS,
+        "exp_threshold": Config.EXP_THRESHOLD,
+        "bounds": RULES_FIELD_BOUNDS,
+        "env_file_path": str(ENV_PATH),
+    }
+
+
+@app.post("/api/settings/rules")
+async def update_rules_settings(body: RulesConfigUpdate):
+    errors = {}
+    for field in ("initial_attribute_points", "exp_threshold"):
+        msg = _validate_range(field, getattr(body, field), RULES_FIELD_BOUNDS)
+        if msg:
+            errors[field] = msg
+    if errors:
+        return JSONResponse({"ok": False, "errors": errors}, status_code=400)
+
+    applied = {}
+    if body.initial_attribute_points is not None:
+        Config.INITIAL_ATTRIBUTE_POINTS = int(body.initial_attribute_points)
+        applied["initial_attribute_points"] = Config.INITIAL_ATTRIBUTE_POINTS
+    if body.exp_threshold is not None:
+        Config.EXP_THRESHOLD = int(body.exp_threshold)
+        applied["exp_threshold"] = Config.EXP_THRESHOLD
+
+    persisted = False
+    if body.persist_to_env:
+        env_updates = {}
+        if body.initial_attribute_points is not None:
+            env_updates["INITIAL_ATTRIBUTE_POINTS"] = str(int(body.initial_attribute_points))
+        if body.exp_threshold is not None:
+            env_updates["EXP_THRESHOLD"] = str(int(body.exp_threshold))
+        try:
+            upsert_env(ENV_PATH, env_updates)
+            persisted = True
+        except OSError as e:
+            return JSONResponse(
+                {"ok": True, "applied": applied, "persisted": False, "persist_error": str(e)},
+                status_code=200,
+            )
+
+    return {"ok": True, "applied": applied, "persisted": persisted}
+

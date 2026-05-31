@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}设置 - TRPG Agent{% endblock %}
+{% block content %}
+<h1>设置</h1>
+<p class="text-muted">在这里集中管理模型与游戏规则参数。修改默认仅写入当前进程内存，勾选「写入 .env」可重启后保留。</p>
+
+<div class="card-grid mt-16">
+  <a href="/settings/model" class="card settings-entry">
+    <div class="settings-entry-icon">🤖</div>
+    <h3>模型配置</h3>
+    <p class="text-muted">API Key、模型名称、温度、最大 Token、对话历史、重试、流超时</p>
+  </a>
+  <a href="/settings/rules" class="card settings-entry">
+    <div class="settings-entry-icon">🎲</div>
+    <h3>游戏规则参数 <span class="badge-unavailable">未实现，调整无效</span></h3>
+    <p class="text-muted">角色创建属性点预算、每级经验阈值</p>
+  </a>
+</div>
+{% endblock %}
+{% block scripts %}{% endblock %}

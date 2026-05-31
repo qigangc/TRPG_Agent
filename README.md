@@ -32,6 +32,9 @@ python main.py             # 打开 http://localhost:7860/main
 | `/save` | 存档管理（读档 / 新建） |
 | `/createCharacter` | 角色创建（含预设模板） |
 | `/game` | 冒险对话页（与 AI 主持人交互） |
+| `/settings` | 设置入口（模型 / 规则） |
+| `/settings/model` | 模型配置：API Key、模型名、温度等，支持测试连接与写入 .env |
+| `/settings/rules` | 游戏规则参数：初始属性点、经验阈值 |
 
 ## 功能特性
 

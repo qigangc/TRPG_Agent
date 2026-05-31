@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}游戏规则参数 - TRPG Agent{% endblock %}
+{% block content %}
+<div class="settings-header">
+  <h1>
+    游戏规则参数
+    <span class="badge-unavailable">未实现，调整无效</span>
+  </h1>
+  <a href="/settings" class="btn btn-secondary">← 返回设置</a>
+</div>
+
+<div class="card">
+  <h3>角色与成长</h3>
+  <p class="text-muted">下列参数仅供查看，当前不支持在线修改。如需调整，请直接编辑 <code>.env</code> 或 <code>config.py</code> 默认值后重启服务。</p>
+
+  <div class="form-row">
+    <label class="form-label" for="initial-attribute-points">
+      初始属性点数 <span class="form-hint" id="initial-attribute-points-hint"></span>
+    </label>
+    <input class="form-input" type="number" id="initial-attribute-points" disabled>
+    <span class="form-hint">创建角色时可分配的属性点总预算。</span>
+  </div>
+
+  <div class="form-row">
+    <label class="form-label" for="exp-threshold">
+      每级经验阈值 <span class="form-hint" id="exp-threshold-hint"></span>
+    </label>
+    <input class="form-input" type="number" id="exp-threshold" disabled>
+    <span class="form-hint">升级所需经验值 = 该数值 × 当前等级。</span>
+  </div>
+
+  <div class="settings-actions">
+    <button class="btn btn-secondary" id="reset-btn" type="button">重新载入</button>
+  </div>
+  <div class="settings-status" id="status-bar"></div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="/static/settings_common.js"></script>
+<script src="/static/settings_rules.js"></script>
+{% endblock %}

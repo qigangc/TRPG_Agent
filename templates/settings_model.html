@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block title %}模型配置 - TRPG Agent{% endblock %}
+{% block content %}
+<div class="settings-header">
+  <h1>模型配置</h1>
+  <a href="/settings" class="btn btn-secondary">← 返回设置</a>
+</div>
+
+<div class="card">
+  <h3>LLM 服务</h3>
+
+  <div class="form-row">
+    <label class="form-label">提供方</label>
+    <input class="form-input" type="text" value="ZhipuAI（当前唯一）" disabled>
+  </div>
+
+  <div class="form-row">
+    <label class="form-label" for="api-key">
+      API Key
+      <span class="form-hint" id="api-key-status"></span>
+    </label>
+    <div class="form-inline">
+      <input class="form-input" type="text" id="api-key" placeholder="留空表示不修改" disabled>
+      <button class="btn btn-secondary" id="api-key-edit-btn" type="button">重新填写</button>
+    </div>
+  </div>
+
+  <div class="form-row">
+    <label class="form-label" for="model-name">模型名称</label>
+    <div class="form-inline">
+      <select class="form-select" id="model-preset" style="max-width: 220px;"></select>
+      <input class="form-input" type="text" id="model-name" placeholder="或自定义模型名">
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <h3>生成参数</h3>
+
+  <div class="form-row">
+    <label class="form-label" for="temperature">
+      温度 <span class="form-hint" id="temperature-hint"></span>
+    </label>
+    <div class="form-slider-row">
+      <input class="form-slider" type="range" id="temperature" min="0" max="2" step="0.05">
+      <span class="form-slider-value" id="temperature-value">—</span>
+    </div>
+  </div>
+
+  <div class="form-row">
+    <label class="form-label" for="max-tokens">
+      最大 Token <span class="form-hint" id="max-tokens-hint"></span>
+    </label>
+    <input class="form-input" type="number" id="max-tokens">
+  </div>
+
+  <div class="form-row">
+    <label class="form-label" for="max-history">
+      对话历史轮数 <span class="form-hint" id="max-history-hint"></span>
+    </label>
+    <input class="form-input" type="number" id="max-history">
+  </div>
+
+  <div class="form-row">
+    <label class="form-label" for="max-retries">
+      失败重试次数 <span class="form-hint" id="max-retries-hint"></span>
+    </label>
+    <input class="form-input" type="number" id="max-retries">
+  </div>
+
+  <div class="form-row">
+    <label class="form-label" for="stream-timeout">
+      流超时（秒） <span class="form-hint" id="stream-timeout-hint"></span>
+    </label>
+    <input class="form-input" type="number" id="stream-timeout">
+  </div>
+</div>
+
+<div class="card">
+  <div class="form-row form-row--inline">
+    <input type="checkbox" id="persist-to-env">
+    <label class="form-label mb-0" for="persist-to-env">
+      同时写入 .env（重启后保留）
+      <span class="form-hint" id="env-path"></span>
+    </label>
+  </div>
+
+  <div class="settings-actions">
+    <button class="btn btn-secondary" id="test-btn" type="button">测试连接</button>
+    <button class="btn btn-secondary" id="reset-btn" type="button">重新载入</button>
+    <button class="btn btn-primary" id="save-btn" type="button">保存生效</button>
+  </div>
+  <div class="settings-status" id="status-bar"></div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="/static/settings_common.js"></script>
+<script src="/static/settings_model.js"></script>
+{% endblock %}

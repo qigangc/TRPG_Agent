@@ -121,6 +121,23 @@ hr {
   margin-bottom: 0;
 }
 
+/* World card interactive states (main.html selection grid) */
+.world-card {
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.world-card:hover {
+  border-color: #5dade2;
+  box-shadow: 0 0 12px rgba(52, 152, 219, 0.15);
+}
+
+.world-card.selected {
+  border-color: #3498db;
+  background: #16213e;
+  box-shadow: 0 0 16px rgba(52, 152, 219, 0.25);
+}
+
 /* ---------- Buttons ---------- */
 .btn {
   padding: 8px 20px;
@@ -380,6 +397,7 @@ hr {
 .mt-0  { margin-top: 0; }
 .mb-0  { margin-bottom: 0; }
 .mt-16 { margin-top: 16px; }
+.mt-24 { margin-top: 24px; }
 .mb-16 { margin-bottom: 16px; }
 
 /* ---------- Scrollbar (webkit) ---------- */
@@ -418,4 +436,142 @@ hr {
   .card-grid {
     gap: 12px;
   }
+}
+
+/* ---------- Settings pages ---------- */
+.settings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.settings-header h1 {
+  margin: 0;
+}
+
+/* 入口卡片（/settings） */
+a.settings-entry {
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+a.settings-entry:hover {
+  border-color: #5dade2;
+  background: #16213e;
+  box-shadow: 0 0 12px rgba(52, 152, 219, 0.15);
+}
+
+.settings-entry-icon {
+  font-size: 32px;
+  line-height: 1;
+}
+
+/* 行内表单：input + button / select + input 横排 */
+.form-inline {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.form-inline > .form-input,
+.form-inline > .form-select {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.form-inline > .btn {
+  flex: 0 0 auto;
+}
+
+/* 禁用输入框视觉（脱敏显示态） */
+.form-input:disabled,
+.form-select:disabled {
+  background: #161628;
+  color: #95a5a6;
+  cursor: not-allowed;
+}
+
+/* 操作按钮区 */
+.settings-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.settings-actions .btn + .btn {
+  margin-left: 0;
+}
+
+/* 状态徽章 */
+.settings-status {
+  margin-top: 12px;
+  min-height: 22px;
+  font-size: 13px;
+  color: #95a5a6;
+}
+
+.settings-status--info    { color: #5dade2; }
+.settings-status--success { color: #2ecc71; }
+.settings-status--error   { color: #e74c3c; }
+
+/* 未实现徽章：标题旁的小标签 */
+.badge-unavailable {
+  display: inline-block;
+  margin-left: 10px;
+  padding: 2px 8px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.5;
+  color: #f39c12;
+  background: rgba(243, 156, 18, 0.12);
+  border: 1px solid rgba(243, 156, 18, 0.4);
+  border-radius: 999px;
+  vertical-align: middle;
+}
+
+@media (max-width: 640px) {
+  .form-inline {
+    flex-direction: column;
+  }
+  .settings-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+/* Save list interactive states (save.html load card) */
+#save-list {
+  list-style: none;
+  padding-left: 0;
+  margin: 12px 0;
+}
+
+#save-list li {
+  cursor: pointer;
+  padding: 10px 12px;
+  margin-bottom: 6px;
+  border: 1px solid #34495e;
+  border-radius: 6px;
+  background: #0f0f1e;
+  color: #ecf0f1;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+#save-list li:hover {
+  border-color: #5dade2;
+  box-shadow: 0 0 8px rgba(52, 152, 219, 0.15);
+}
+
+#save-list li.selected {
+  border-color: #3498db;
+  background: #16213e;
+  box-shadow: 0 0 12px rgba(52, 152, 219, 0.25);
 }

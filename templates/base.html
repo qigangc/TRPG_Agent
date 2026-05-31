@@ -12,6 +12,7 @@
     <a href="/save" class="{% if current_page == 'save' %}active{% endif %}">存档管理</a>
     <a href="/createCharacter" class="{% if current_page == 'createCharacter' %}active{% endif %}">创建角色</a>
     <a href="/game" class="{% if current_page == 'game' %}active{% endif %}">冒险</a>
+    <a href="/settings" class="{% if current_page == 'settings' %}active{% endif %}">设置</a>
   </nav>
   <main class="page-container">{% block content %}{% endblock %}</main>
   {% block scripts %}{% endblock %}

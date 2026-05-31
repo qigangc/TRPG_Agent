@@ -3,6 +3,13 @@ let selectedFilepath = null;
 function renderSaves(saves) {
   const list = document.getElementById("save-list");
   list.innerHTML = "";
+  if (!saves || saves.length === 0) {
+    const empty = document.createElement("li");
+    empty.className = "empty-state";
+    empty.textContent = "还没有存档，点击下方“创建新角色”开始冒险";
+    list.appendChild(empty);
+    return;
+  }
   for (const save of saves) {
     const li = document.createElement("li");
     li.textContent = `${save.character_name} (Lv.${save.level}) - ${save.world_id} - ${save.saved_at}`;
