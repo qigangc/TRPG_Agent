@@ -11,3 +11,16 @@ build/
 saves/
 
 *.log
+
+# AI 协作相关（不纳入仓库）
+AGENTS.md
+ARCHITECTURE.md
+CLAUDE.md
+.claude/
+.cursor/
+.cursorrules
+.omo/
+.aider*
+.continue/
+.windsurfrules
+
