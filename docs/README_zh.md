@@ -1,65 +1,86 @@
-# TRPG Agent 文字跑团AI
+# TRPG Agent
 
-基于智谱AI（GLM-4）的文字跑团Agent，配备Gradio网页界面。支持两种截然不同的世界观——**DND**和**CNC**——各自拥有独特的叙事风格与专属机制。
+[English](./README_en.md) | [简体中文](./README_zh.md) | [繁體中文](./README_zh_TW.md) | [日本語](./README_ja.md)
 
-[English](README_en.md) | [简体中文](README_zh.md) | [繁體中文](README_zh_TW.md) | [日本語](README_ja.md)
+[中文路线图](./roadmap_zh.md) | [English Roadmap](./roadmap_en.md)
 
-## 功能特色
+## 简介
 
-- **双世界观切换** — 随时在DND（史诗奇幻）与CNC（沙雕国产奇幻）之间切换，角色数据保留
-- **AI游戏主持人** — 智谱AI GLM-4担任DM/GM，支持流式回复
-- **D20检定系统** — AI请求判定时自动掷骰，处理大成功/大失败
-- **角色成长** — 6大属性、经验值、升级、属性点分配
-- **预设角色** — 5个即用角色模板（战士、盗贼、法师、吟游诗人、武僧），新玩家快速上手
-- **世界观专属机制** — DND拥有激励骰；CNC拥有修仙突破
-- **存档系统** — 基于JSON的存档文件，不限数量
+TRPG Agent 是一个基于智谱 AI（GLM-4）的本地文字 TRPG Agent。项目使用 FastAPI + Jinja2 + Vanilla JS 构建网页界面，通过 SSE `/api/chat/stream` 流式返回 AI 叙事，并使用 `saves/` 下的 JSON 文件保存本地存档。
+
+项目入口为 `TRPG_Agent/main.py`，在项目目录中运行 `python main.py` 后访问 `http://localhost:7860/main` 或 `http://127.0.0.1:7860/main`。
+
+## 功能
+
+- 支持 DND 和 CNC 两种世界观
+- AI 扮演 DM/GM，提供文字叙事与行动反馈
+- 通过 SSE 流式输出聊天内容
+- 支持 d20 检定、大成功和大失败
+- 支持角色创建、属性分配、经验和升级
+- 支持 JSON 本地存档读取与保存
+- 提供模型设置和规则设置页面
 
 ## 快速开始
 
 ```bash
 cd TRPG_Agent
 pip install -r requirements.txt
-cp .env.example .env       # 编辑 .env，填入你的 ZHIPU_API_KEY
-python main.py             # 打开 http://localhost:7860
+cp .env.example .env
+python main.py
 ```
+
+启动前必须在 `.env` 中配置：
+
+```env
+ZHIPU_API_KEY=你的智谱 API Key
+```
+
+浏览器打开：`http://localhost:7860/main`
+
+## 页面/路由
+
+| 路由 | 说明 |
+|---|---|
+| `/main` | 世界观选择页 |
+| `/save` | 存档管理页 |
+| `/createCharacter` | 角色创建页 |
+| `/game` | 游戏对话页 |
+| `/settings` | 设置入口 |
+| `/settings/model` | 模型配置页 |
+| `/settings/rules` | 规则配置页 |
+
+主要流式接口：`POST /api/chat/stream`，返回 `text/event-stream`。
 
 ## 游戏流程
 
-1. **选择世界观** — 在主页选择DND或CNC
-2. **读取存档或创建角色** — 读取已有存档，或创建新角色
-3. **开始冒险** — 与AI主持人对话、掷骰检定、角色成长
+1. 在 `/main` 选择 DND 或 CNC 世界观
+2. 在 `/save` 读取存档或新建游戏
+3. 在 `/createCharacter` 创建角色并分配属性
+4. 在 `/game` 与 AI 主持人对话并推进冒险
+5. 触发检定时自动执行 d20 判定
+6. 游戏状态可保存到 `saves/` JSON 存档
 
-## 世界观设定
+## 世界观
 
-### DND — 龙与地下城
+### DND
 
-| | |
-|---|---|
-| **语气** | 史诗、正式、庄重，中世纪奇幻色彩 |
-| **GM人设** | 严肃的地下城主(DM)，公正裁判 |
-| **判定标签** | `[检定:属性 DC=N]` |
-| **大成功(20)** | 必定成功，"命运的眷顾" |
-| **大失败(1)** | 必定失败，"厄运降临" |
-| **特色机制** | **激励骰** — 精彩扮演时GM可给予+1d6激励骰 |
+DND 是偏史诗、庄重的中世纪奇幻世界观。AI 使用检定标签：`[检定:属性 DC=N]`。
 
-### CNC — 国产奇幻
+### CNC
 
-| | |
-|---|---|
-| **语气** | 搞笑、轻快、接地气，网络梗 |
-| **GM人设** | 吐槽型GM，喜欢打破第四面墙 |
-| **判定标签** | `[挑战:属性 DC=N]` |
-| **大成功(20)** | 必定成功 + 额外行动机会，"这波天秀！" |
-| **大失败(1)** | 必定失败 + 搞笑倒霉后果，"翻车了！" |
-| **特色机制** | **修仙突破** — 累计3次大成功触发突破，+2任意属性（不消耗属性点） |
+CNC 是偏轻松、吐槽风格的国产奇幻世界观。AI 使用挑战标签：`[挑战:属性 DC=N]`。
 
-## 规则说明
+## 规则
 
-### 骰子
+### d20 检定
 
-仅使用d20，无伤害骰——战斗结果由AI叙事决定。
+检定公式：`d20 + 属性调整值 >= DC`
 
-**检定公式：** `d20 + 属性修正 ≥ DC`
+- 自然 20：大成功
+- 自然 1：大失败
+- 其他点数按公式判断是否成功
+
+常见 DC：
 
 | DC | 难度 |
 |---|---|
@@ -68,76 +89,68 @@ python main.py             # 打开 http://localhost:7860
 | 20 | 困难 |
 | 25 | 极难 |
 
-自然20 = 大成功（必定成功）。自然1 = 大失败（必定失败）。
-
 ### 角色属性
 
-6大属性默认值为10，修正值 = `(属性值 - 10) // 2`：
+角色使用 6 项属性，内部字段名如下：
 
-| 属性 | 修正值（属性14时） |
+| 字段 | 中文 |
 |---|---|
-| 力量 | +2 |
-| 敏捷 | +2 |
-| 体质 | +2 |
-| 智力 | +2 |
-| 感知 | +2 |
-| 魅力 | +2 |
+| `strength` | 力量 |
+| `dexterity` | 敏捷 |
+| `constitution` | 体质 |
+| `intelligence` | 智力 |
+| `wisdom` | 感知 |
+| `charisma` | 魅力 |
 
-**角色创建：** 分配20点属性点（每点高于10消耗1点）。
+属性调整值按 `(属性值 - 10) // 2` 计算。
 
-**成长系统：** 经验阈值 = `等级 × 100`。升级获得+1属性点。
+## 配置
 
-### 预设角色
+配置通过 `.env` 和 `config.py` 读取。`ZHIPU_API_KEY` 为必填。
 
-| 模板 | 名称 | 特色 |
-|---|---|---|
-| ⚔️ 战士 | 艾尔德里克 | 力量16，体质15 — 正面冲锋 |
-| 🗡️ 盗贼 | 暗影·薇拉 | 敏捷17 — 潜行巧手 |
-| 🔮 法师 | 塞拉斯 | 智力17 — 博学施法 |
-| 🎵 吟游诗人 | 莉莉安 | 魅力17 — 社交鼓舞 |
-| 🥋 武僧 | 无尘 | 敏捷15，感知15 — 内外兼修 |
+| 变量 | 说明 |
+|---|---|
+| `ZHIPU_API_KEY` | 智谱 API Key，必填 |
+| `MODEL_NAME` | 模型名称 |
+| `MAX_HISTORY` | 保留的历史对话轮数 |
+| `INITIAL_ATTRIBUTE_POINTS` | 初始属性点 |
+| `TEMPERATURE` | 模型采样温度 |
+| `MAX_TOKENS` | 单次回复最大 token 数 |
+| `MAX_RETRIES` | API 调用重试次数 |
+| `EXP_THRESHOLD` | 升级经验阈值基数 |
 
 ## 项目结构
 
-```
+```text
 TRPG_Agent/
-├── main.py              # 入口文件
-├── config.py            # 配置管理（读取.env）
-├── gui.py               # Gradio网页界面
-├── game_engine.py       # 游戏状态与调度
-├── llm_client.py        # 智谱AI接口 + 标签解析
-├── storage.py           # JSON存档读写
+├── main.py
+├── app.py
+├── config.py
+├── game_engine.py
+├── llm_client.py
+├── storage.py
+├── env_writer.py
 ├── rules/
-│   ├── dice.py          # d20骰子
-│   ├── character.py     # 角色数据类 + 预设模板
-│   └── events.py        # 检定判定
 ├── worlds/
-│   ├── base.py          # 世界观抽象基类
-│   ├── dnd.py           # DND世界观
-│   └── cnc.py           # CNC世界观
-├── saves/               # 存档目录（gitignored）
+├── templates/
+├── static/
+├── saves/
+├── docs/
 ├── requirements.txt
 └── .env.example
 ```
 
-## 配置项
+## 开发说明/注意事项
 
-所有设置均可通过 `.env` 文件或 `config.py` 默认值配置：
+- 当前 Web UI 基于 FastAPI、Jinja2、Vanilla JS 和 SSE
+- `main.py` 启动 uvicorn，默认监听 `127.0.0.1:7860`
+- 所有页面由服务端 Jinja2 模板渲染
+- 聊天流使用 `/api/chat/stream`
+- 存档为 `saves/` 目录下的 JSON 文件
+- 世界观包括 DND 和 CNC
+- 修改模型或规则配置时，优先通过设置页面或 `.env` 调整
 
-| 变量 | 默认值 | 说明 |
-|---|---|---|
-| `ZHIPU_API_KEY` | — | **必填。** 智谱AI密钥 |
-| `MODEL_NAME` | `glm-4` | 智谱AI模型名称 |
-| `MAX_HISTORY` | `20` | 保留的对话轮数 |
-| `INITIAL_ATTRIBUTE_POINTS` | `20` | 角色创建时的属性点 |
-| `TEMPERATURE` | `0.85` | LLM采样温度 |
-| `MAX_TOKENS` | `2048` | 单次回复最大token数 |
-| `MAX_RETRIES` | `3` | LLM API重试次数 |
+## 路线图链接
 
-## 技术栈
-
-- **Python 3.10+**
-- **Gradio** — 网页界面
-- **ZhipuAI SDK** — GLM-4 大模型
-- **python-dotenv** — 环境配置
-- **JSON** — 本地存档存储
+- [中文路线图](./roadmap_zh.md)
+- [English Roadmap](./roadmap_en.md)
