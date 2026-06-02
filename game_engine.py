@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import logging
+import random
 from typing import Dict, Generator, List, Optional, Tuple
 
 from config import Config
 from llm_client import LLMClient
 from rules.character import Character
-from rules.events import make_check, CheckResult
+from rules.events import make_check, make_check_with_roll, CheckResult, ATTRIBUTE_CN
 from storage import save_game, load_game, list_saves
 from worlds import get_world, WORLD_REGISTRY
 from worlds.base import WorldBase
@@ -20,13 +21,85 @@ class GameEngine:
         self.world_id: str = "dnd"
         self.world: WorldBase = get_world("dnd")
         self.messages: List[Dict[str, str]] = []
+        self.last_quick_actions: List[str] = []
         self.llm: Optional[LLMClient] = None
         self._initialized = False
+        self.pending_check: Optional[Dict] = None
+        self._pending_exp: Optional[Tuple[int, bool]] = None
 
     def _ensure_llm(self) -> LLMClient:
         if self.llm is None:
             self.llm = LLMClient()
         return self.llm
+
+    def set_pending_check(self, attribute: str, dc: int) -> None:
+        """记录待处理的检定请求，等待前端骰子结果。"""
+        modifier_value = self.character.get_modifier(attribute) if self.has_character else 0
+        self.pending_check = {
+            "attribute": attribute,
+            "dc": dc,
+            "attribute_label": ATTRIBUTE_CN.get(attribute, attribute),
+            "modifier": modifier_value,
+        }
+
+    def resolve_check(
+        self,
+        roll_value: int,
+        use_inspiration: bool = False,
+        inspiration_roll: int = 0,
+    ) -> Tuple[CheckResult, str]:
+        """
+        使用前端传来的骰子结果执行检定。
+        调用 make_check_with_roll()，处理世界特效，返回 (CheckResult, narrative_desc)。
+        """
+        if not self.has_character:
+            raise ValueError("No character to perform check")
+        if self.pending_check is None:
+            raise ValueError("No pending check to resolve")
+
+        attr = self.pending_check["attribute"]
+        dc = self.pending_check["dc"]
+
+        result = make_check_with_roll(
+            self.character, attr, dc,
+            roll_value=roll_value,
+            use_inspiration=use_inspiration,
+            inspiration_roll=inspiration_roll,
+        )
+
+        if result.is_critical_success:
+            desc = self.world.describe_critical_success(attr)
+            effect = self.world.on_critical_success(self.character)
+            if effect == "breakthrough":
+                desc += "\n🌟 修仙突破触发！即将获得属性提升！"
+            elif effect:
+                desc += f"\n{effect}"
+        elif result.is_critical_failure:
+            desc = self.world.describe_critical_failure(attr)
+            effect = self.world.on_critical_failure(self.character)
+            if effect:
+                desc += f"\n{effect}"
+        elif result.success:
+            desc = self.world.describe_check_success(attr, result.total, dc)
+        else:
+            desc = self.world.describe_check_failure(attr, result.total, dc)
+
+        full_desc = f"{result.description}\n{desc}"
+        return result, full_desc
+
+    def hidden_exp_gain(self) -> Optional[Tuple[int, bool]]:
+        """
+        隐藏经验获取：每次交互 30% 概率获得 5-25 经验。
+        返回 (amount, leveled) 或 None。
+        """
+        if not self.has_character:
+            return None
+        if random.random() < 0.3:
+            amount = random.randint(5, 25)
+            leveled = self.character.gain_exp(amount)
+            logger.info(f"Hidden exp gained: {amount}, leveled up: {leveled}")
+            return (amount, leveled)
+        return None
 
     @property
     def has_character(self) -> bool:
@@ -45,11 +118,7 @@ class GameEngine:
     ) -> Character:
         """Create a new character with given attributes."""
         c = Character(name=name, background=background)
-        allocated = (
-            (strength - 10) + (dexterity - 10) + (constitution - 10)
-            + (intelligence - 10) + (wisdom - 10) + (charisma - 10)
-        )
-        c.attribute_points = Config.INITIAL_ATTRIBUTE_POINTS - allocated
+        c.attribute_points = 0
         c.strength = strength
         c.dexterity = dexterity
         c.constitution = constitution
@@ -59,7 +128,10 @@ class GameEngine:
 
         self.character = c
         self.messages = []
+        self.last_quick_actions = []
         self._initialized = False
+        self.pending_check = None
+        self._pending_exp = None
         return c
 
     def switch_world(self, world_id: str) -> str:
@@ -70,7 +142,10 @@ class GameEngine:
         self.world_id = world_id
         self.world = get_world(world_id)
         self.messages = []
+        self.last_quick_actions = []
         self._initialized = False
+        self.pending_check = None
+        self._pending_exp = None
         return f"Switched to {self.world.world_name}"
 
     def _build_system_prompt(self) -> str:
@@ -87,6 +162,15 @@ class GameEngine:
         if self._initialized:
             return
         self._initialized = True
+
+    def _restore_quick_actions(self) -> None:
+        self.last_quick_actions = []
+        for msg in self.messages:
+            if msg.get("role") != "assistant":
+                continue
+            actions = LLMClient.parse_quick_actions(msg.get("content", ""))
+            if actions:
+                self.last_quick_actions = actions
 
     def process_input(self, user_input: str) -> Generator[str, None, None]:
         """
@@ -117,6 +201,7 @@ class GameEngine:
 
         self.messages.append({"role": "assistant", "content": full_response})
         self._process_ai_output(full_response)
+        self._pending_exp = self.hidden_exp_gain()
 
     def _update_scene(self, text: str) -> None:
         """Extract scene description from AI output and update character.current_scene."""
@@ -204,7 +289,10 @@ class GameEngine:
         self.world_id = data["world_id"]
         self.world = get_world(self.world_id)
         self.messages = data.get("messages", [])
+        self._restore_quick_actions()
         self._initialized = True
+        self.pending_check = None
+        self._pending_exp = None
         return f"Loaded: {self.character.name} (Lv.{self.character.level}) in {self.world.world_name}"
 
     def get_save_list(self) -> List[Dict]:

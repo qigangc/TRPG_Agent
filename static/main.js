@@ -14,21 +14,23 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     worldList.innerHTML = worlds
-      .map(
-        (w) => `
-      <div class="card world-card" data-world-id="${w.id}">
+      .map((w) => {
+        const disabled = w.id === "cnc";
+        return `
+      <div class="card world-card${disabled ? " world-card--disabled" : ""}" data-world-id="${w.id}" data-disabled="${disabled ? "true" : "false"}">
         <div class="world-card-emoji">${w.emoji}</div>
         <h3>${w.name}</h3>
         <p class="text-muted">${w.description}</p>
         <p class="text-muted">风格：${w.tone}</p>
-      </div>`
-      )
+        ${disabled ? '<p class="world-card__disabled-note">暂不支持</p>' : ""}
+      </div>`;
+      })
       .join("");
 
     // Click handler for world cards
     worldList.addEventListener("click", (e) => {
       const card = e.target.closest(".world-card");
-      if (!card) return;
+      if (!card || card.dataset.disabled === "true") return;
 
       // Deselect all, select clicked
       document.querySelectorAll(".world-card").forEach((c) => c.classList.remove("selected"));

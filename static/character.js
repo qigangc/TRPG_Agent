@@ -27,21 +27,61 @@ const ATTRIBUTE_ICONS = {
   charisma: "✨",
 };
 
-const INITIAL_POINTS = 20;
+const ATTRIBUTE_TOTAL = 80;
 
-// ---- Slider rendering ----
+// ---- 属性控件渲染 ----
+
+function modifier(score) {
+  return Math.floor((score - 10) / 2);
+}
+
+function modifierBar(score) {
+  const mod = modifier(score);
+  const filled = Math.max(0, Math.min(10, mod + 5));
+  return `${"█".repeat(filled)}${"░".repeat(10 - filled)}`;
+}
+
+function randomAttributeValues() {
+  const values = Object.fromEntries(ATTRIBUTE_NAMES.map((attr) => [attr, 0]));
+  for (let i = 0; i < ATTRIBUTE_TOTAL; i++) {
+    const available = ATTRIBUTE_NAMES.filter((attr) => values[attr] < 20);
+    const attr = available[Math.floor(Math.random() * available.length)];
+    values[attr] += 1;
+  }
+  return values;
+}
+
+function renderAttributeDetail(value) {
+  const score = parseInt(value, 10);
+  const mod = modifier(score);
+  const sign = mod >= 0 ? "+" : "";
+  return `${modifierBar(score)} ${sign}${mod}`;
+}
+
+function randomizeAttributes() {
+  const values = randomAttributeValues();
+  const inputs = document.querySelectorAll('#attr-sliders .attribute-value-input');
+  for (const inp of inputs) {
+    const attr = inp.dataset.attr;
+    if (attr && values[attr] !== undefined) {
+      inp.value = values[attr];
+      inp.dispatchEvent(new Event("input"));
+    }
+  }
+}
 
 function renderSliders() {
   const container = document.getElementById("attr-sliders");
   if (!container) return;
 
+  const initialValues = randomAttributeValues();
   container.innerHTML = "";
   for (const attr of ATTRIBUTE_NAMES) {
     const icon = ATTRIBUTE_ICONS[attr] || "";
     const label = ATTRIBUTE_LABELS[attr] || attr;
 
     const row = document.createElement("div");
-    row.className = "form-slider-row";
+    row.className = "form-attribute-row";
 
     const labelRow = document.createElement("div");
     labelRow.style.cssText = "display:flex;align-items:center;gap:8px;";
@@ -51,26 +91,49 @@ function renderSliders() {
     labelSpan.textContent = `${icon} ${label}`;
     labelRow.appendChild(labelSpan);
 
+    const control = document.createElement("div");
+    control.className = "attribute-stepper";
+
+    const minusBtn = document.createElement("button");
+    minusBtn.type = "button";
+    minusBtn.className = "attribute-stepper-btn";
+    minusBtn.textContent = "-";
+
     const input = document.createElement("input");
-    input.type = "range";
-    input.className = "form-slider";
-    input.min = 1;
+    input.type = "number";
+    input.className = "attribute-value-input";
+    input.min = 0;
     input.max = 20;
-    input.value = 10;
+    input.value = initialValues[attr];
     input.dataset.attr = attr;
 
-    const valueSpan = document.createElement("span");
-    valueSpan.className = "form-slider-value";
-    valueSpan.textContent = "10";
+    const plusBtn = document.createElement("button");
+    plusBtn.type = "button";
+    plusBtn.className = "attribute-stepper-btn";
+    plusBtn.textContent = "+";
 
-    input.addEventListener("input", () => {
-      valueSpan.textContent = input.value;
+    const detail = document.createElement("span");
+    detail.className = "attribute-detail";
+    detail.textContent = renderAttributeDetail(input.value);
+
+    const setValue = (value) => {
+      const current = Number.isFinite(value) ? value : 0;
+      const next = Math.max(0, Math.min(20, current));
+      input.value = next;
+      detail.textContent = renderAttributeDetail(next);
       updatePointsLeft();
-    });
+    };
 
+    minusBtn.addEventListener("click", () => setValue(parseInt(input.value, 10) - 1));
+    plusBtn.addEventListener("click", () => setValue(parseInt(input.value, 10) + 1));
+    input.addEventListener("input", () => setValue(parseInt(input.value || "0", 10)));
+
+    control.appendChild(minusBtn);
+    control.appendChild(input);
+    control.appendChild(plusBtn);
     row.appendChild(labelRow);
-    row.appendChild(input);
-    row.appendChild(valueSpan);
+    row.appendChild(control);
+    row.appendChild(detail);
     container.appendChild(row);
   }
 }
@@ -78,17 +141,16 @@ function renderSliders() {
 // ---- Points calculation ----
 
 function calcPointsUsed() {
-  const inputs = document.querySelectorAll('#attr-sliders .form-slider');
+  const inputs = document.querySelectorAll('#attr-sliders .attribute-value-input');
   let used = 0;
   for (const inp of inputs) {
-    const val = parseInt(inp.value, 10);
-    used += Math.max(0, val - 10);
+    used += parseInt(inp.value || "0", 10);
   }
   return used;
 }
 
 function calcPointsLeft() {
-  return INITIAL_POINTS - calcPointsUsed();
+  return ATTRIBUTE_TOTAL - calcPointsUsed();
 }
 
 function updatePointsLeft() {
@@ -97,11 +159,10 @@ function updatePointsLeft() {
   if (!span) return;
 
   const left = calcPointsLeft();
-  const display = left < 0 ? 0 : left;
-  span.textContent = display;
-  span.style.color = left < 0 ? "#e74c3c" : left === 0 ? "#f39c12" : "#2ecc71";
+  span.textContent = left;
+  span.style.color = left < 0 ? "#e74c3c" : left === 0 ? "#2ecc71" : "#f39c12";
 
-  if (btn) btn.disabled = left < 0;
+  if (btn) btn.disabled = left !== 0;
 }
 
 // ---- Presets ----
@@ -138,7 +199,7 @@ function applyPreset(preset) {
   if (nameInput) nameInput.value = preset.name || "";
   if (bgTextarea) bgTextarea.value = preset.background || "";
 
-  const inputs = document.querySelectorAll('#attr-sliders .form-slider');
+  const inputs = document.querySelectorAll('#attr-sliders .attribute-value-input');
   for (const inp of inputs) {
     const attr = inp.dataset.attr;
     if (attr && preset[attr] !== undefined) {
@@ -156,19 +217,19 @@ function getFormData() {
   const background = document.getElementById("char-bg")?.value?.trim() || "";
 
   const attrs = {};
-  const inputs = document.querySelectorAll('#attr-sliders .form-slider');
+  const inputs = document.querySelectorAll('#attr-sliders .attribute-value-input');
   for (const inp of inputs) {
     attrs[inp.dataset.attr] = parseInt(inp.value, 10);
   }
 
   return {
     name,
-    strength: attrs.strength || 10,
-    dexterity: attrs.dexterity || 10,
-    constitution: attrs.constitution || 10,
-    intelligence: attrs.intelligence || 10,
-    wisdom: attrs.wisdom || 10,
-    charisma: attrs.charisma || 10,
+    strength: attrs.strength ?? 10,
+    dexterity: attrs.dexterity ?? 10,
+    constitution: attrs.constitution ?? 10,
+    intelligence: attrs.intelligence ?? 10,
+    wisdom: attrs.wisdom ?? 10,
+    charisma: attrs.charisma ?? 10,
     background,
   };
 }
@@ -179,9 +240,9 @@ async function onCreateClick() {
   if (!statusEl || !btn) return;
 
   const left = calcPointsLeft();
-  if (left < 0) {
-    statusEl.textContent = "属性点不足，请减少部分属性值。";
-    statusEl.style.color = "#e74c3c";
+  if (left !== 0) {
+    statusEl.textContent = left > 0 ? `还有 ${left} 点属性未分配。` : `属性总点数超出 ${Math.abs(left)} 点。`;
+    statusEl.style.color = left > 0 ? "#f39c12" : "#e74c3c";
     return;
   }
 
@@ -227,6 +288,7 @@ async function init() {
   updatePointsLeft();
 
   document.getElementById("create-btn")?.addEventListener("click", onCreateClick);
+  document.getElementById("random-attributes-btn")?.addEventListener("click", randomizeAttributes);
 
   try {
     const resp = await fetch("/api/character/presets");

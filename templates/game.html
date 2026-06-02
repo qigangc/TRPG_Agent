@@ -5,7 +5,16 @@
 <div style="display:flex;gap:20px;">
   <div style="flex:3;">
     <div id="chat-log" class="chat-log"></div>
-    <div id="quick-actions" style="display:flex;gap:8px;margin-bottom:8px;"></div>
+    <div id="quick-actions" class="quick-actions"></div>
+    <div id="dice-area" class="dice-area" style="display:none;">
+      <div id="dice-prompt" class="dice-prompt"></div>
+      <div class="dice-controls">
+        <button id="inspiration-dice-btn" class="btn btn-secondary" type="button">使用激励骰</button>
+        <button id="roll-dice-btn" class="btn btn-primary" type="button">投骰子</button>
+        <button id="skip-check-btn" class="btn btn-danger" type="button">跳过检定</button>
+      </div>
+      <div id="dice-result" class="dice-result" style="display:none;"></div>
+    </div>
     <div style="display:flex;gap:8px;">
       <input id="user-input" class="form-input" type="text" placeholder="描述你想做的事..." style="flex:1;" />
       <button id="send-btn" class="btn btn-primary">发送</button>

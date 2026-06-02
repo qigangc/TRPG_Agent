@@ -10,17 +10,20 @@
 <hr>
 <section>
   <h2>自定义角色</h2>
-  <p>分配20点（每点属性超过10消耗1点）</p>
+  <p>随机分配80点属性（每项0-20，可手动微调）</p>
   <div class="form-row">
     <label class="form-label" for="char-name">角色名</label>
     <input id="char-name" class="form-input" type="text" placeholder="输入角色名..." />
   </div>
-  <div id="attr-sliders"></div>
   <div class="form-row">
     <label class="form-label" for="char-bg">背景故事（可选）</label>
     <textarea id="char-bg" class="form-textarea" placeholder="讲述你的故事..."></textarea>
   </div>
-  <div id="points-display">剩余属性点: <span id="points-left">20</span></div>
+  <div id="attr-sliders"></div>
+  <div id="points-display" class="points-actions">
+    <span>剩余属性点: <span id="points-left">0</span></span>
+    <button id="random-attributes-btn" class="btn btn-secondary" type="button">随机</button>
+  </div>
   <button id="create-btn" class="btn btn-primary">创建角色并开始冒险</button>
   <div id="create-status"></div>
 </section>

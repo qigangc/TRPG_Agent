@@ -45,12 +45,7 @@ def make_check(
     use_inspiration: bool = False,
 ) -> CheckResult:
     """
-    Perform a d20 attribute check.
-
-    - Roll d20 (+ advantage/disadvantage)
-    - Add attribute modifier
-    - Compare vs DC
-    - Natural 20 = critical success, natural 1 = critical failure
+    Perform a d20 attribute check (auto-roll).
     """
     if advantage and disadvantage:
         advantage = False
@@ -63,17 +58,44 @@ def make_check(
     else:
         roll = roll_d20()
 
+    return _compute_check(character, attribute, dc, roll.value, use_inspiration)
+
+
+def make_check_with_roll(
+    character: Character,
+    attribute: str,
+    dc: int,
+    roll_value: int,
+    use_inspiration: bool = False,
+    inspiration_roll: int = 0,
+) -> CheckResult:
+    """
+    Perform a d20 attribute check with a user-supplied roll value.
+    Used when the user rolls dice in the frontend.
+    """
+    return _compute_check(character, attribute, dc, roll_value, use_inspiration, inspiration_roll)
+
+
+def _compute_check(
+    character: Character,
+    attribute: str,
+    dc: int,
+    roll_value: int,
+    use_inspiration: bool = False,
+    inspiration_roll: int = 0,
+) -> CheckResult:
     mod = character.get_modifier(attribute)
-    total = roll.value + mod
+    total = roll_value + mod
 
     if use_inspiration and character.inspiration > 0:
-        from rules.dice import roll_inspiration
-        insp = roll_inspiration()
-        total += insp
+        if inspiration_roll <= 0:
+            from rules.dice import roll_inspiration
+            inspiration_roll = roll_inspiration()
+        total += inspiration_roll
         character.inspiration -= 1
 
-    is_crit_success = roll.is_critical_success
-    is_crit_failure = roll.is_critical_failure
+    is_crit_success = roll_value == 20
+    is_crit_failure = roll_value == 1
 
     if is_crit_success:
         success = True
@@ -90,13 +112,13 @@ def make_check(
     elif is_crit_failure:
         desc = f"[d20] Natural 1! {attr_cn} Critical Failure! (DC{dc} {dc_label})"
     elif success:
-        desc = f"[d20] {attr_cn} Check Success: {roll.value}+{mod}={total} >= {dc}({dc_label})"
+        desc = f"[d20] {attr_cn} Check Success: {roll_value}+{mod}={total} >= {dc}({dc_label})"
     else:
-        desc = f"[d20] {attr_cn} Check Failure: {roll.value}+{mod}={total} < {dc}({dc_label})"
+        desc = f"[d20] {attr_cn} Check Failure: {roll_value}+{mod}={total} < {dc}({dc_label})"
 
     return CheckResult(
         success=success,
-        roll_value=roll.value,
+        roll_value=roll_value,
         modifier_value=mod,
         total=total,
         dc=dc,

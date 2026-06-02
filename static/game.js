@@ -13,6 +13,12 @@
     const $quickActions = () => document.getElementById('quick-actions');
     const $saveBtn = () => document.getElementById('save-game-btn');
     const $saveStatus = () => document.getElementById('save-status');
+    const $diceArea = () => document.getElementById('dice-area');
+    const $dicePrompt = () => document.getElementById('dice-prompt');
+    const $inspirationBtn = () => document.getElementById('inspiration-dice-btn');
+    const $rollBtn = () => document.getElementById('roll-dice-btn');
+    const $skipBtn = () => document.getElementById('skip-check-btn');
+    const $diceResult = () => document.getElementById('dice-result');
 
     // ---------- Utilities ----------
     function escapeHtml(s) {
@@ -134,6 +140,181 @@
         });
     }
 
+    // ---------- Dice UI ----------
+    function showDiceUI(checkData) {
+        pendingCheck = checkData;
+        useInspiration = false;
+        var area = $diceArea();
+        if (area) area.style.display = '';
+        var prompt = $dicePrompt();
+        if (prompt) {
+            prompt.textContent = '请进行' + (checkData.attribute_label || checkData.attribute || '') + '检定，DC ' + checkData.dc;
+        }
+        var result = $diceResult();
+        if (result) {
+            result.style.display = 'none';
+            result.innerHTML = '';
+        }
+        var inspBtn = $inspirationBtn();
+        if (inspBtn) {
+            inspBtn.classList.remove('active');
+            if (inspirationCount <= 0) {
+                inspBtn.disabled = true;
+            }
+        }
+        setDiceDisabled(false);
+    }
+
+    function hideDiceUI() {
+        pendingCheck = null;
+        useInspiration = false;
+        var area = $diceArea();
+        if (area) area.style.display = 'none';
+        var result = $diceResult();
+        if (result) {
+            result.style.display = 'none';
+            result.innerHTML = '';
+        }
+        var inspBtn = $inspirationBtn();
+        if (inspBtn) {
+            inspBtn.classList.remove('active');
+        }
+    }
+
+    function setDiceDisabled(disabled) {
+        var rollBtn = $rollBtn();
+        var skipBtn = $skipBtn();
+        var inspBtn = $inspirationBtn();
+        if (rollBtn) rollBtn.disabled = disabled;
+        if (skipBtn) skipBtn.disabled = disabled;
+        if (inspBtn) {
+            if (inspirationCount <= 0) {
+                inspBtn.disabled = true;
+            } else {
+                inspBtn.disabled = disabled;
+            }
+        }
+    }
+
+    function rollD20() {
+        return Math.floor(Math.random() * 20) + 1;
+    }
+
+    function rollD6() {
+        return Math.floor(Math.random() * 6) + 1;
+    }
+
+    function handleCheckRequest(data) {
+        showDiceUI(data);
+    }
+
+    async function submitCheckResult(roll, usedInspiration, inspirationRoll) {
+        var bodyData = {
+            roll: roll,
+            use_inspiration: usedInspiration,
+            inspiration_roll: inspirationRoll || null
+        };
+        var response;
+        try {
+            response = await fetch('/api/check/resolve', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Accept': 'text/event-stream' },
+                credentials: 'same-origin',
+                body: JSON.stringify(bodyData)
+            });
+        } catch (e) {
+            hideDiceUI();
+            setSendDisabled(false);
+            return;
+        }
+        if (!response.ok || !response.body) {
+            hideDiceUI();
+            setSendDisabled(false);
+            return;
+        }
+        var aiHandle = appendMessage('ai', '...');
+        if (aiHandle) {
+            aiHandle.div.removeChild(aiHandle.textNode);
+            aiHandle.textNode = document.createTextNode('');
+            aiHandle.div.appendChild(aiHandle.textNode);
+        }
+        var reader = response.body.getReader();
+        var decoder = new TextDecoder('utf-8');
+        var buffer = '';
+        var done = false;
+        var gotDone = false;
+        try {
+            while (!done) {
+                var chunk = await reader.read();
+                done = chunk.done;
+                if (chunk.value) {
+                    buffer += decoder.decode(chunk.value, { stream: true });
+                }
+                var parsed = parseSSEBuffer(buffer);
+                buffer = parsed.rest;
+                for (var i = 0; i < parsed.events.length; i++) {
+                    var ev = parsed.events[i];
+                    var log = $chatLog();
+                    if (ev.event === 'chunk') {
+                        if (aiHandle && ev.data) {
+                            var wasNear = isNearBottom(log, 80);
+                            var piece = (ev.data.text !== undefined) ? ev.data.text : (typeof ev.data === 'string' ? ev.data : '');
+                            if (piece) aiHandle.textNode.appendData(piece);
+                            maybeScroll(log, wasNear);
+                        }
+                    } else if (ev.event === 'actions') {
+                        var actions = (ev.data && ev.data.actions) ? ev.data.actions : (Array.isArray(ev.data) ? ev.data : []);
+                        renderQuickActions(actions);
+                    } else if (ev.event === 'exp') {
+                        if (ev.data && ev.data.amount) {
+                            var expInfo = '获得 ' + ev.data.amount + ' 经验值';
+                            if (aiHandle) {
+                                var wasNear = isNearBottom(log, 80);
+                                aiHandle.textNode.appendData('\n[' + expInfo + ']');
+                                maybeScroll(log, wasNear);
+                            }
+                        }
+                    } else if (ev.event === 'done') {
+                        gotDone = true;
+                    }
+                }
+            }
+            if (buffer.length) {
+                var parsed = parseSSEBuffer(buffer + '\n\n');
+                for (var i = 0; i < parsed.events.length; i++) {
+                    var ev = parsed.events[i];
+                    if (ev.event === 'done') gotDone = true;
+                }
+            }
+        } catch (e) {
+            // ignore stream error
+        } finally {
+            hideDiceUI();
+            setSendDisabled(false);
+            fetchScene();
+            fetchCharacter();
+        }
+    }
+
+    async function skipCheck() {
+        try {
+            var r = await fetch('/api/check/skip', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: '{}'
+            });
+            if (r.ok) {
+                hideDiceUI();
+                setSendDisabled(false);
+            } else {
+                console.error('Skip check failed');
+            }
+        } catch (e) {
+            console.error('Skip check error:', e);
+        }
+    }
+
     // ---------- API ----------
     async function fetchScene() {
         try {
@@ -150,6 +331,7 @@
             if (!r.ok) return;
             const data = await r.json();
             renderCharacterCard(data);
+            inspirationCount = Number(data && data.inspiration !== undefined ? data.inspiration : 0);
         } catch (e) { /* ignore */ }
     }
 
@@ -159,12 +341,62 @@
             if (!r.ok) return;
             const data = await r.json();
             const messages = Array.isArray(data) ? data : (data.messages || []);
+            const actions = Array.isArray(data.actions) ? data.actions : [];
             renderHistory(messages);
+            renderQuickActions(actions);
+            if (messages.length === 0) showScenarioPicker();
         } catch (e) { /* ignore */ }
+    }
+
+    async function fetchScenarios() {
+        const r = await fetch('/api/scenarios', { credentials: 'same-origin' });
+        if (!r.ok) return [];
+        const data = await r.json();
+        return Array.isArray(data.scenarios) ? data.scenarios : [];
+    }
+
+    async function showScenarioPicker() {
+        const scenarios = await fetchScenarios();
+        if (!scenarios.length || document.querySelector('.scenario-modal')) return;
+        const overlay = document.createElement('div');
+        overlay.className = 'scenario-modal';
+        const panel = document.createElement('div');
+        panel.className = 'scenario-modal__panel';
+        const title = document.createElement('h2');
+        title.textContent = '选择剧本';
+        const desc = document.createElement('p');
+        desc.className = 'text-muted';
+        desc.textContent = '选择一个开局剧本，冒险将从这里开始。';
+        const list = document.createElement('div');
+        list.className = 'scenario-modal__list';
+        scenarios.forEach(function (scenario) {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'scenario-option';
+            const itemTitle = document.createElement('strong');
+            itemTitle.textContent = scenario.title || '未命名剧本';
+            const itemText = document.createElement('span');
+            itemText.textContent = scenario.prompt || '';
+            btn.appendChild(itemTitle);
+            btn.appendChild(itemText);
+            btn.addEventListener('click', function () {
+                overlay.remove();
+                sendMessage(scenario.prompt || scenario.title || '开始冒险');
+            });
+            list.appendChild(btn);
+        });
+        panel.appendChild(title);
+        panel.appendChild(desc);
+        panel.appendChild(list);
+        overlay.appendChild(panel);
+        document.body.appendChild(overlay);
     }
 
     // ---------- SSE streaming ----------
     let sendInFlight = false;
+    let pendingCheck = null;
+    let useInspiration = false;
+    let inspirationCount = 0;
 
     function setSendDisabled(disabled) {
         const btn = $sendBtn();
@@ -172,6 +404,7 @@
         if (btn) btn.disabled = disabled;
         if (input) input.disabled = disabled;
         sendInFlight = disabled;
+        setDiceDisabled(disabled);
     }
 
     function appendCheckSeparator(msgDiv, checkData) {
@@ -336,6 +569,21 @@
                 appendCheckSeparator(aiHandle && aiHandle.div, data);
                 break;
             }
+            case 'check_request': {
+                handleCheckRequest(data);
+                break;
+            }
+            case 'exp': {
+                if (data && data.amount) {
+                    var expInfo = '获得 ' + data.amount + ' 经验值';
+                    if (aiHandle) {
+                        var wasNear = isNearBottom(log, 80);
+                        aiHandle.textNode.appendData('\n[' + expInfo + ']');
+                        maybeScroll(log, wasNear);
+                    }
+                }
+                break;
+            }
             case 'actions': {
                 const actions = (data && data.actions) ? data.actions : (Array.isArray(data) ? data : []);
                 renderQuickActions(actions);
@@ -401,7 +649,20 @@
     }
 
     // ---------- Init ----------
+    function bindLeaveConfirm() {
+        document.querySelectorAll('.topnav a[href]').forEach(function (link) {
+            const href = link.getAttribute('href') || '';
+            if (href === '/game') return;
+            link.addEventListener('click', function (e) {
+                if (!window.confirm('确定要离开冒险页面吗？')) {
+                    e.preventDefault();
+                }
+            });
+        });
+    }
+
     function bindEvents() {
+        bindLeaveConfirm();
         const btn = $sendBtn();
         if (btn) {
             btn.addEventListener('click', function () {
@@ -420,6 +681,61 @@
         }
         const sbtn = $saveBtn();
         if (sbtn) sbtn.addEventListener('click', saveGame);
+
+        // Dice event bindings
+        var inspBtn = $inspirationBtn();
+        if (inspBtn) {
+            inspBtn.addEventListener('click', function () {
+                useInspiration = !useInspiration;
+                if (useInspiration) {
+                    inspBtn.classList.add('active');
+                } else {
+                    inspBtn.classList.remove('active');
+                }
+            });
+        }
+        var rollBtn = $rollBtn();
+        if (rollBtn) {
+            rollBtn.addEventListener('click', function () {
+                if (!pendingCheck) return;
+                setDiceDisabled(true);
+                var roll = rollD20();
+                var inspirationRoll = null;
+                if (useInspiration) {
+                    inspirationRoll = rollD6();
+                }
+                var resultEl = $diceResult();
+                if (resultEl) {
+                    resultEl.style.display = '';
+                    // Animation: show 3 random numbers before real result
+                    var animCount = 0;
+                    function doAnimation() {
+                        if (animCount < 3) {
+                            resultEl.innerHTML = '<div class="dice-result__d20 dice-rolling">' + rollD20() + '</div>';
+                            animCount++;
+                            setTimeout(doAnimation, 100);
+                        } else {
+                            // Show real result
+                            var html = '<div class="dice-result__d20">' + roll + '</div>';
+                            if (inspirationRoll !== null) {
+                                html += '<div class="dice-result__detail">激励骰: ' + inspirationRoll + '</div>';
+                            }
+                            resultEl.innerHTML = html;
+                            submitCheckResult(roll, useInspiration, inspirationRoll);
+                        }
+                    }
+                    doAnimation();
+                } else {
+                    submitCheckResult(roll, useInspiration, inspirationRoll);
+                }
+            });
+        }
+        var skipBtn = $skipBtn();
+        if (skipBtn) {
+            skipBtn.addEventListener('click', function () {
+                skipCheck();
+            });
+        }
     }
 
     document.addEventListener('DOMContentLoaded', function () {

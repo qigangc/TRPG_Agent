@@ -138,6 +138,27 @@ hr {
   box-shadow: 0 0 16px rgba(52, 152, 219, 0.25);
 }
 
+.world-card--disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+  filter: grayscale(0.8);
+}
+
+.world-card--disabled:hover {
+  border-color: #34495e;
+  box-shadow: none;
+}
+
+.world-card__disabled-note {
+  display: inline-block;
+  margin: 4px 0 0;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #2c3e50;
+  color: #95a5a6;
+  font-size: 13px;
+}
+
 /* ---------- Buttons ---------- */
 .btn {
   padding: 8px 20px;
@@ -232,6 +253,91 @@ hr {
   font-style: italic;
 }
 
+.quick-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.quick-action-btn {
+  border: 1px solid #34495e;
+  border-radius: 999px;
+  padding: 7px 12px;
+  background: #1a1a2e;
+  color: #bdc3c7;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.quick-action-btn:hover:not(:disabled) {
+  border-color: #3498db;
+  background: #16213e;
+  color: #ecf0f1;
+  box-shadow: 0 0 12px rgba(52, 152, 219, 0.18);
+}
+
+.quick-action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.scenario-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(15, 15, 30, 0.78);
+  backdrop-filter: blur(3px);
+}
+
+.scenario-modal__panel {
+  width: min(680px, 100%);
+  border: 1px solid #34495e;
+  border-radius: 12px;
+  padding: 20px;
+  background: #1a1a2e;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.38);
+}
+
+.scenario-modal__list {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.scenario-option {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  border: 1px solid #34495e;
+  border-radius: 10px;
+  padding: 14px;
+  background: #0f0f1e;
+  color: #ecf0f1;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.scenario-option span {
+  color: #bdc3c7;
+  font-size: 14px;
+}
+
+.scenario-option:hover {
+  border-color: #3498db;
+  background: #16213e;
+  box-shadow: 0 0 14px rgba(52, 152, 219, 0.18);
+}
+
 /* ---------- Scene bar (ported from gui.py:35-43) ---------- */
 .scene-bar {
   background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
@@ -311,81 +417,74 @@ hr {
   resize: vertical;
 }
 
-/* ---------- Slider (range input) — character creation ---------- */
-.form-slider {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 100%;
-  height: 6px;
-  background: #2c3e50;
-  border-radius: 999px;
-  outline: none;
-  margin: 8px 0;
-  cursor: pointer;
-}
-
-.form-slider::-webkit-slider-runnable-track {
-  height: 6px;
-  background: #2c3e50;
-  border-radius: 999px;
-}
-
-.form-slider::-moz-range-track {
-  height: 6px;
-  background: #2c3e50;
-  border-radius: 999px;
-  border: none;
-}
-
-.form-slider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 18px;
-  height: 18px;
-  background: #3498db;
-  border: 2px solid #ecf0f1;
-  border-radius: 50%;
-  cursor: pointer;
-  margin-top: -6px;
-  transition: background-color 0.15s ease, transform 0.1s ease;
-}
-
-.form-slider::-moz-range-thumb {
-  width: 18px;
-  height: 18px;
-  background: #3498db;
-  border: 2px solid #ecf0f1;
-  border-radius: 50%;
-  cursor: pointer;
-  transition: background-color 0.15s ease, transform 0.1s ease;
-}
-
-.form-slider:hover::-webkit-slider-thumb {
-  background: #2980b9;
-}
-
-.form-slider:hover::-moz-range-thumb {
-  background: #2980b9;
-}
-
-.form-slider:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.form-slider-row {
+/* ---------- 角色属性步进控件 ---------- */
+.form-attribute-row {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: minmax(92px, 140px) auto minmax(120px, 1fr);
   align-items: center;
   gap: 12px;
+  margin-bottom: 10px;
 }
 
-.form-slider-value {
-  min-width: 36px;
-  text-align: right;
+.attribute-stepper {
+  display: inline-grid;
+  grid-template-columns: 36px 54px 36px;
+  align-items: center;
+  overflow: hidden;
+  border: 1px solid #34495e;
+  border-radius: 8px;
+  background: #0f0f1e;
+}
+
+.attribute-stepper-btn {
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: #16213e;
   color: #ecf0f1;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.attribute-stepper-btn:hover {
+  background: #2980b9;
+}
+
+.attribute-value-input {
+  width: 54px;
+  height: 36px;
+  border: none;
+  border-left: 1px solid #34495e;
+  border-right: 1px solid #34495e;
+  background: #0f0f1e;
+  color: #ecf0f1;
+  font: inherit;
+  font-weight: 700;
+  text-align: center;
   font-variant-numeric: tabular-nums;
-  font-weight: 600;
+  outline: none;
+}
+
+.attribute-value-input::-webkit-outer-spin-button,
+.attribute-value-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.attribute-detail {
+  color: #bdc3c7;
+  font-family: monospace;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.points-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 14px 0;
 }
 
 /* ---------- Utility helpers ---------- */
@@ -574,4 +673,79 @@ a.settings-entry:hover {
   border-color: #3498db;
   background: #16213e;
   box-shadow: 0 0 12px rgba(52, 152, 219, 0.25);
+}
+
+/* ---------- Dice area ---------- */
+.dice-area {
+  padding: 16px;
+  border: 1px solid #34495e;
+  border-radius: 10px;
+  background: #1a1a2e;
+  margin-bottom: 10px;
+}
+
+.dice-prompt {
+  font-size: 16px;
+  font-weight: 600;
+  color: #ecf0f1;
+  margin-bottom: 12px;
+  text-align: center;
+}
+
+.dice-controls {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.dice-result {
+  margin-top: 12px;
+  text-align: center;
+  padding: 12px;
+  border: 1px solid #2c3e50;
+  border-radius: 8px;
+  background: #0f0f1e;
+}
+
+.dice-result__d20 {
+  font-size: 48px;
+  font-weight: 700;
+  color: #f39c12;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+
+.dice-result__detail {
+  font-size: 14px;
+  color: #bdc3c7;
+  margin-top: 6px;
+  line-height: 1.6;
+}
+
+.dice-result__detail .success {
+  color: #2ecc71;
+  font-weight: 600;
+}
+
+.dice-result__detail .failure {
+  color: #e74c3c;
+  font-weight: 600;
+}
+
+#inspiration-dice-btn.active {
+  border-color: #2ecc71 !important;
+  background: rgba(46, 204, 113, 0.12) !important;
+  color: #2ecc71 !important;
+  box-shadow: 0 0 12px rgba(46, 204, 113, 0.25);
+}
+
+/* Dice rolling animation */
+.dice-rolling {
+  animation: dice-blink 0.3s ease-in-out 3;
+}
+
+@keyframes dice-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
 }

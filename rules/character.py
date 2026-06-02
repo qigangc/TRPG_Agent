@@ -147,7 +147,7 @@ class Character:
     def set_attribute(self, attr_name: str, value: int) -> bool:
         if attr_name not in ATTRIBUTE_NAMES:
             return False
-        if value < 1 or value > 20:
+        if value < 0 or value > 20:
             return False
         old = getattr(self, attr_name)
         diff = value - old

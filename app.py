@@ -2,6 +2,7 @@ import os
 import sys
 import json
 import time
+import random
 import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -22,6 +23,7 @@ from llm_client import LLMClient
 from worlds import WORLD_REGISTRY
 from config import Config, ENV_PATH
 from rules.character import PRESET_CHARACTERS
+from rules.events import ATTRIBUTE_CN
 from storage import list_saves
 from env_writer import upsert_env
 
@@ -80,6 +82,8 @@ async def list_worlds():
 async def select_world(body: WorldSelectRequest):
     if body.world_id not in WORLD_REGISTRY:
         return JSONResponse(status_code=400, content={"error": "unknown world"})
+    if body.world_id == "cnc":
+        return JSONResponse(status_code=400, content={"error": "暂不支持"})
 
     engine.switch_world(body.world_id)
     return {
@@ -110,17 +114,20 @@ async def api_scene():
 
 @app.get("/api/history")
 async def api_history():
-    llm = engine._ensure_llm()
     messages = []
+    quick_actions = list(engine.last_quick_actions)
     for msg in engine.messages:
         role = msg.get("role", "")
         if role not in ("user", "assistant"):
             continue
         content = msg.get("content", "")
         if role == "assistant":
-            content = llm.strip_tags(content)
+            actions = LLMClient.parse_quick_actions(content)
+            if actions:
+                quick_actions = actions
+            content = LLMClient.strip_tags(content)
         messages.append({"role": role, "content": content})
-    return {"messages": messages}
+    return {"messages": messages, "actions": quick_actions}
 
 
 @app.get("/")
@@ -197,16 +204,12 @@ async def create_character(req: CreateCharacterRequest):
     if not req.name.strip():
         return JSONResponse(status_code=400, content={"ok": False, "error": "Character name cannot be empty"})
 
-    allocated = (
-        (req.strength - 10)
-        + (req.dexterity - 10)
-        + (req.constitution - 10)
-        + (req.intelligence - 10)
-        + (req.wisdom - 10)
-        + (req.charisma - 10)
-    )
-    if allocated > Config.INITIAL_ATTRIBUTE_POINTS:
-        return JSONResponse(status_code=400, content={"ok": False, "error": "Attribute point budget exceeded"})
+    attrs = [req.strength, req.dexterity, req.constitution, req.intelligence, req.wisdom, req.charisma]
+    if any(value < 0 or value > 20 for value in attrs):
+        return JSONResponse(status_code=400, content={"ok": False, "error": "Attributes must be between 0 and 20"})
+
+    if sum(attrs) != 80:
+        return JSONResponse(status_code=400, content={"ok": False, "error": "Attribute total must be 80"})
 
     engine.create_character(
         name=req.name,
@@ -269,8 +272,39 @@ async def api_save():
         return JSONResponse({"error": str(e)}, status_code=400)
 
 
+SCENARIO_POOLS = {
+    "dnd": [
+        {"title": "失落矿坑的回声", "prompt": "你收到一封染血的求救信，指向北境山脉中一座重新传出敲击声的废弃矿坑。"},
+        {"title": "雾港失踪案", "prompt": "港口城市连续有人在浓雾中失踪，唯一线索是一枚带有海盐味的黑色鳞片。"},
+        {"title": "被诅咒的丰收节", "prompt": "丰收节前夜，村庄里的稻草人开始移动，田地深处传来孩子的笑声。"},
+        {"title": "龙墓下的契约", "prompt": "一名贵族雇你寻找祖先遗失的契约，而契约据说埋在古龙墓穴的王座之下。"},
+        {"title": "银月塔的求援", "prompt": "银月塔突然升起蓝色火焰，塔中法师只传出一句话：不要相信我的影子。"},
+    ],
+    "cnc": [
+        {"title": "地铁末班车修仙事件", "prompt": "你坐上末班地铁，却发现下一站播报成了昆仑墟，车厢广告开始讲授吐纳法。"},
+        {"title": "外卖订单：送到妖王洞", "prompt": "一笔高额跑腿订单要求你把奶茶送到城市地下三层的妖王洞，还备注少冰七分糖。"},
+        {"title": "小区广场舞法阵", "prompt": "小区大妈们的广场舞突然引动灵气潮汐，物业请你查查音响里到底封了什么。"},
+        {"title": "网红古井直播翻车", "prompt": "一场探灵直播中断后，主播账号仍在自动更新，画面里出现了你的背影。"},
+        {"title": "便利店零点鬼促销", "prompt": "凌晨便利店推出买一送一灵异促销，收银员坚持说你昨天已经来过一次。"},
+    ],
+}
+
+
+@app.get("/api/scenarios")
+async def api_scenarios():
+    pool = SCENARIO_POOLS.get(engine.world_id) or SCENARIO_POOLS["dnd"]
+    count = random.randint(1, min(3, len(pool)))
+    return {"scenarios": random.sample(pool, count)}
+
+
 class ChatStreamBody(BaseModel):
     message: str
+
+
+class CheckResolveBody(BaseModel):
+    roll: int
+    use_inspiration: bool = False
+    inspiration_roll: int = 0
 
 
 def _sse(event: str, data: dict) -> str:
@@ -311,36 +345,19 @@ async def api_chat_stream(body: ChatStreamBody, request: Request):
 
             if check_requests:
                 req = check_requests[0]
-                _result, desc = engine.perform_check(req["attribute"], req["dc"])
-                yield _sse("check", {
-                    "description": desc,
-                    "success": bool(_result.success),
+                engine.set_pending_check(req["attribute"], req["dc"])
+                yield _sse("check_request", {
+                    "attribute": req["attribute"],
+                    "dc": req["dc"],
+                    "attribute_label": ATTRIBUTE_CN.get(req["attribute"], req["attribute"]),
+                    "modifier": engine.character.get_modifier(req["attribute"]),
                 })
-
-                check_msg = f"[Check result: {desc}]"
-                engine.messages.append({"role": "user", "content": check_msg})
-
-                system_prompt = engine._build_system_prompt()
-                follow_up = ""
-                follow_last_display = ""
-
-                follow_gen = llm.chat_stream(system_prompt, engine.messages)
-                async for chunk in iterate_in_threadpool(follow_gen):
-                    follow_up += chunk
-                    display = llm.strip_tags(follow_up)
-                    if len(display) > len(follow_last_display):
-                        delta = display[len(follow_last_display):]
-                        follow_last_display = display
-                        if delta:
-                            yield _sse("chunk", {"text": delta})
-
-                engine.messages.append({"role": "assistant", "content": follow_up})
-                engine._process_ai_output(follow_up)
-                source_for_actions = follow_up
-
-            actions = llm.parse_quick_actions(source_for_actions)
-            yield _sse("actions", {"actions": actions})
-            yield _sse("done", {})
+                # 跳过 follow-up LLM 调用，等待前端骰子结果
+            else:
+                actions = llm.parse_quick_actions(source_for_actions)
+                engine.last_quick_actions = actions
+                yield _sse("actions", {"actions": actions})
+                yield _sse("done", {})
         except Exception as e:
             logger.exception("chat stream error")
             yield _sse("error", {"msg": str(e)})
@@ -354,6 +371,89 @@ async def api_chat_stream(body: ChatStreamBody, request: Request):
             "Connection": "keep-alive",
         },
     )
+
+
+@app.post("/api/check/resolve")
+async def api_check_resolve(body: CheckResolveBody, request: Request):
+    """前端骰子结果提交，执行检定并获取 AI 后续叙述。"""
+    if not engine.has_character:
+        return JSONResponse({"error": "请先创建角色"}, status_code=400)
+    if engine.pending_check is None:
+        return JSONResponse({"error": "没有待处理的检定"}, status_code=400)
+
+    async def event_generator():
+        try:
+            llm = engine._ensure_llm()
+
+            result, desc = engine.resolve_check(
+                body.roll,
+                use_inspiration=body.use_inspiration,
+                inspiration_roll=body.inspiration_roll,
+            )
+            yield _sse("check", {
+                "description": desc,
+                "success": bool(result.success),
+            })
+
+            check_msg = f"[Check result: {desc}]"
+            engine.messages.append({"role": "user", "content": check_msg})
+
+            system_prompt = engine._build_system_prompt()
+            follow_up = ""
+            follow_last_display = ""
+
+            follow_gen = llm.chat_stream(system_prompt, engine.messages)
+            async for chunk in iterate_in_threadpool(follow_gen):
+                follow_up += chunk
+                display = llm.strip_tags(follow_up)
+                if len(display) > len(follow_last_display):
+                    delta = display[len(follow_last_display):]
+                    follow_last_display = display
+                    if delta:
+                        yield _sse("chunk", {"text": delta})
+
+                if await request.is_disconnected():
+                    pass
+
+            engine.messages.append({"role": "assistant", "content": follow_up})
+            engine._process_ai_output(follow_up)
+
+            actions = llm.parse_quick_actions(follow_up)
+            engine.last_quick_actions = actions
+            yield _sse("actions", {"actions": actions})
+
+            # 隐藏经验增长
+            pending_exp = engine._pending_exp
+            engine._pending_exp = None
+            if pending_exp:
+                amount, leveled = pending_exp
+                yield _sse("exp", {"amount": amount, "leveled": leveled})
+
+            engine.pending_check = None
+            yield _sse("done", {})
+        except Exception as e:
+            logger.exception("check resolve error")
+            yield _sse("error", {"msg": str(e)})
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+            "Connection": "keep-alive",
+        },
+    )
+
+
+@app.post("/api/check/skip")
+async def api_check_skip():
+    """跳过当前检定，直接继续对话。"""
+    if engine.pending_check is None:
+        return JSONResponse({"error": "没有待处理的检定"}, status_code=400)
+    engine.pending_check = None
+    engine._pending_exp = None
+    return {"ok": True}
 
 
 # ============================================================
