@@ -2,11 +2,11 @@
 
 [English](docs/README_en.md) | [简体中文](docs/README_zh.md) | [繁體中文](docs/README_zh_TW.md) | [日本語](docs/README_ja.md)
 
-[中文路线图](docs/roadmap_zh.md) | [English Roadmap](docs/roadmap_en.md)
+[路线图](docs/roadmap_zh.md) | [Roadmap](docs/roadmap_en.md)
 
 ## 简介
 
-TRPG Agent 是一个基于智谱 AI（GLM-4）的本地文字 TRPG Agent。项目使用 FastAPI + Jinja2 + Vanilla JS 构建网页界面，通过 SSE `/api/chat/stream` 流式返回 AI 叙事，并使用 `saves/` 下的 JSON 文件保存本地存档。
+TRPG Agent 是一个基于大模型的本地文字 TRPG Agent。项目使用 FastAPI + Jinja2 + Vanilla JS 构建网页界面，通过 SSE `/api/chat/stream` 流式返回 AI 叙事，并使用 `saves/` 下的 JSON 文件保存本地存档。
 
 项目入口为 `TRPG_Agent/main.py`，在项目目录中运行 `python main.py` 后访问 `http://localhost:7860/main` 或 `http://127.0.0.1:7860/main`。
 
@@ -152,5 +152,5 @@ TRPG_Agent/
 
 ## 路线图
 
-- [中文路线图](docs/roadmap_zh.md)
-- [English Roadmap](docs/roadmap_en.md)
+- [路线图](docs/roadmap_zh.md)
+- [Roadmap](docs/roadmap_en.md)
