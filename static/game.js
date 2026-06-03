@@ -212,7 +212,7 @@
         var bodyData = {
             roll: roll,
             use_inspiration: usedInspiration,
-            inspiration_roll: inspirationRoll || null
+            inspiration_roll: inspirationRoll || 0
         };
         var response;
         try {
