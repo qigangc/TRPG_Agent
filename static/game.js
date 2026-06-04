@@ -51,6 +51,50 @@
     }
 
     // ---------- Render helpers ----------
+    // 为不同角色的对话内容分配颜色
+    var _npcColorIndex = 0;
+    var _npcColorMap = {};
+    var _dialogueColors = ['chat-msg__dialogue--npc1', 'chat-msg__dialogue--npc2', 'chat-msg__dialogue--npc3'];
+
+    function getDialogueColor(speaker) {
+        if (!speaker) speaker = '';
+        if (!_npcColorMap[speaker]) {
+            _npcColorMap[speaker] = _dialogueColors[_npcColorIndex % _dialogueColors.length];
+            _npcColorIndex++;
+        }
+        return _npcColorMap[speaker];
+    }
+
+    function colorizeDialogues(msgDiv) {
+        if (!msgDiv) return;
+        // 获取纯文本
+        var text = msgDiv.textContent || '';
+        if (!text) return;
+        // 匹配对话模式: 角色名说：「对话」 / 角色名："对话" / 「对话」 / "对话"
+        // 也匹配 角色名道：「对话」 / 角色名笑道：「对话」 等
+        var replaced = text.replace(/([^\s,，。！？;；：:—\-]{1,10})(说|道|喊|叫|笑|叹|低声|高声|冷冷|淡淡)?[：:]\s*[「""]([^」""]+)[」""]|([「""])([^」""]+)[」""]/g, function(match, p1, p2, p3, p4, p5) {
+            var speaker = p1 || '';
+            var dialogue = p3 || p5 || '';
+            var colorClass = speaker ? getDialogueColor(speaker) : _dialogueColors[0];
+            if (p1 !== undefined) {
+                // 带角色名的对话: 角色名说：「对话」
+                return escapeHtml(speaker) + escapeHtml(p2 || '') + '：<span class="chat-msg__dialogue ' + colorClass + '">「' + escapeHtml(dialogue) + '」</span>';
+            } else {
+                // 无角色名的对话: 「对话」
+                return '<span class="chat-msg__dialogue ' + colorClass + '">「' + escapeHtml(dialogue) + '」</span>';
+            }
+        });
+        // 只有替换了内容才用 innerHTML 替换（避免不必要的 DOM 操作）
+        if (replaced !== escapeHtml(text)) {
+            // 保留已有的 .chat-msg__exp 等子元素
+            var expElements = msgDiv.querySelectorAll('.chat-msg__exp, .chat-msg__check');
+            msgDiv.innerHTML = replaced;
+            for (var i = 0; i < expElements.length; i++) {
+                msgDiv.appendChild(expElements[i]);
+            }
+        }
+    }
+
     function appendMessage(role, text) {
         const log = $chatLog();
         if (!log) return null;
@@ -113,11 +157,16 @@
         const log = $chatLog();
         if (!log || !Array.isArray(messages)) return;
         log.innerHTML = '';
+        _npcColorIndex = 0;
+        _npcColorMap = {};
         for (let i = 0; i < messages.length; i++) {
             const m = messages[i];
             const role = (m.role === 'user') ? 'user' : 'ai';
             const text = m.content || m.text || '';
-            appendMessage(role, text);
+            var handle = appendMessage(role, text);
+            if (role === 'ai' && handle && handle.div) {
+                colorizeDialogues(handle.div);
+            }
         }
         log.scrollTop = log.scrollHeight;
     }
@@ -267,10 +316,12 @@
                         renderQuickActions(actions);
                     } else if (ev.event === 'exp') {
                         if (ev.data && ev.data.amount) {
-                            var expInfo = '获得 ' + ev.data.amount + ' 经验值';
-                            if (aiHandle) {
+                            if (aiHandle && aiHandle.div) {
                                 var wasNear = isNearBottom(log, 80);
-                                aiHandle.textNode.appendData('\n[' + expInfo + ']');
+                                var expDiv = document.createElement('div');
+                                expDiv.className = 'chat-msg__exp';
+                                expDiv.textContent = '✨ 获得 ' + ev.data.amount + ' 经验值';
+                                aiHandle.div.appendChild(expDiv);
                                 maybeScroll(log, wasNear);
                             }
                         }
@@ -289,6 +340,9 @@
         } catch (e) {
             // ignore stream error
         } finally {
+            if (aiHandle && aiHandle.div) {
+                colorizeDialogues(aiHandle.div);
+            }
             hideDiceUI();
             setSendDisabled(false);
             fetchScene();
@@ -545,6 +599,7 @@
         } finally {
             if (!gotDone) {
                 // Best-effort refresh even on abrupt end
+                if (aiHandle && aiHandle.div) colorizeDialogues(aiHandle.div);
                 fetchScene();
                 fetchCharacter();
             }
@@ -575,10 +630,12 @@
             }
             case 'exp': {
                 if (data && data.amount) {
-                    var expInfo = '获得 ' + data.amount + ' 经验值';
-                    if (aiHandle) {
+                    if (aiHandle && aiHandle.div) {
                         var wasNear = isNearBottom(log, 80);
-                        aiHandle.textNode.appendData('\n[' + expInfo + ']');
+                        var expDiv = document.createElement('div');
+                        expDiv.className = 'chat-msg__exp';
+                        expDiv.textContent = '✨ 获得 ' + data.amount + ' 经验值';
+                        aiHandle.div.appendChild(expDiv);
                         maybeScroll(log, wasNear);
                     }
                 }
@@ -590,6 +647,9 @@
                 break;
             }
             case 'done': {
+                if (aiHandle && aiHandle.div) {
+                    colorizeDialogues(aiHandle.div);
+                }
                 fetchScene();
                 fetchCharacter();
                 break;

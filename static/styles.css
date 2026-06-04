@@ -238,6 +238,9 @@ hr {
 .chat-msg--user {
   background: #2c3e50;
   border-left: 3px solid #3498db;
+  max-width: 80%;
+  margin-left: auto;
+  text-align: right;
 }
 
 .chat-msg--ai {
@@ -251,6 +254,32 @@ hr {
   border-left: 3px solid #f39c12;
   color: #f39c12;
   font-style: italic;
+}
+
+/* 经验值获得提示 - 独立行 */
+.chat-msg__exp {
+  margin-top: 8px;
+  padding: 4px 0;
+  color: #f1c40f;
+  font-weight: bold;
+  text-align: center;
+  border-top: 1px dashed rgba(241, 196, 15, 0.3);
+  font-size: 0.9em;
+}
+
+/* 角色对话彩色标识 */
+.chat-msg__dialogue {
+  padding: 0 2px;
+  border-radius: 2px;
+}
+.chat-msg__dialogue--npc1 {
+  color: #5dade2;
+}
+.chat-msg__dialogue--npc2 {
+  color: #e8a0bf;
+}
+.chat-msg__dialogue--npc3 {
+  color: #58d68d;
 }
 
 .quick-actions {
