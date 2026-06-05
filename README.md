@@ -4,6 +4,10 @@
 
 [路线图](docs/roadmap_zh.md) | [Roadmap](docs/roadmap_en.md)
 
+## 背景
+
+跑团推广最大的难点一直在于，需要多人+长时间投入来进行。因此一直在考虑想找一个办法让跑团能变成一个单人的事情
+
 ## 简介
 
 TRPG Agent 是一个基于大模型的本地文字 TRPG Agent。项目使用 FastAPI + Jinja2 + Vanilla JS 构建网页界面，通过 SSE `/api/chat/stream` 流式返回 AI 叙事，并使用 `saves/` 下的 JSON 文件保存本地存档。
