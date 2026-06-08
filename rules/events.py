@@ -1,9 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
 
-from rules.dice import roll_d20, roll_with_advantage, roll_with_disadvantage
 from rules.character import Character
 
 ATTRIBUTE_CN = {
@@ -34,31 +32,6 @@ class CheckResult:
     is_critical_failure: bool
     attribute: str
     description: str
-
-
-def make_check(
-    character: Character,
-    attribute: str,
-    dc: int,
-    advantage: bool = False,
-    disadvantage: bool = False,
-    use_inspiration: bool = False,
-) -> CheckResult:
-    """
-    Perform a d20 attribute check (auto-roll).
-    """
-    if advantage and disadvantage:
-        advantage = False
-        disadvantage = False
-
-    if advantage:
-        roll = roll_with_advantage()
-    elif disadvantage:
-        roll = roll_with_disadvantage()
-    else:
-        roll = roll_d20()
-
-    return _compute_check(character, attribute, dc, roll.value, use_inspiration)
 
 
 def make_check_with_roll(

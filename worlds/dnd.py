@@ -9,9 +9,6 @@ class DNDWorld(WorldBase):
     world_id = "dnd"
     world_emoji = "⚔️"
     tone = "史诗、正式、庄重"
-    narrative_style = "严肃奇幻，详细描写场景氛围，注重沉浸感"
-    default_setting = "中世纪魔法世界，剑与魔法交织的大陆，古老的地下城与巨龙守护着无尽的宝藏。"
-    gm_persona = "你是一位经验丰富的地下城主(DM)，公正裁决每一次判定，用史诗般的叙事引导冒险。"
     check_keyword = "检定"
     description = "剑与魔法的史诗大陆，古老地下城与巨龙守护着无尽宝藏。适合喜欢经典奇幻冒险的玩家。"
 

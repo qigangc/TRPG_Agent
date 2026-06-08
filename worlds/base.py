@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Dict
 
 from rules.character import Character
 
@@ -11,9 +10,6 @@ class WorldBase(ABC):
     world_id: str = ""
     world_emoji: str = ""
     tone: str = ""
-    narrative_style: str = ""
-    default_setting: str = ""
-    gm_persona: str = ""
     check_keyword: str = "检定"
     description: str = ""
 
@@ -44,9 +40,3 @@ class WorldBase(ABC):
     @abstractmethod
     def on_critical_failure(self, character: Character) -> str:
         ...
-
-    def format_check_request(self, attribute: str, dc: int) -> str:
-        return f"[{self.check_keyword}:{attribute} DC={dc}]"
-
-    def format_exp_reward(self, amount: int) -> str:
-        return f"[经验:{amount}]"

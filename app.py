@@ -64,6 +64,16 @@ class WorldSelectRequest(BaseModel):
     world_id: str
 
 
+@app.get("/api/game-state")
+async def api_game_state():
+    """返回当前游戏流程状态，供前端导航判断。"""
+    return {
+        "world_selected": engine.has_world,
+        "has_character": engine.has_character,
+        "in_game": engine.has_character and engine.world_selected,
+    }
+
+
 @app.get("/api/worlds")
 async def list_worlds():
     return [
@@ -99,15 +109,15 @@ async def api_scene():
         return {"has_character": False}
     return {
         "has_character": True,
-        "scene": engine.character.current_scene or "",
+        "scene_name": engine.character.current_scene or "",
         "world_id": engine.world_id,
         "world_name": engine.world.world_name,
         "world_emoji": getattr(engine.world, "world_emoji", ""),
         "hp": engine.character.hp,
-        "max_hp": engine.character.max_hp,
+        "hp_max": engine.character.max_hp,
         "level": engine.character.level,
         "inspiration": engine.character.inspiration,
-        "breakthrough_count": engine.character.breakthrough_count,
+        "breakthrough": engine.character.breakthrough_count,
         "inventory": engine.character.inventory,
     }
 
@@ -130,6 +140,15 @@ async def api_history():
     return {"messages": messages, "actions": quick_actions}
 
 
+def _nav_state() -> dict:
+    """返回导航栏所需的游戏流程状态。"""
+    return {
+        "world_selected": engine.has_world,
+        "has_character": engine.has_character,
+        "in_game": engine.has_character and engine.has_world,
+    }
+
+
 @app.get("/")
 async def root():
     return RedirectResponse("/main", status_code=302)
@@ -137,24 +156,44 @@ async def root():
 
 @app.get("/main")
 async def main_page(request: Request):
-    return templates.TemplateResponse("main.html", {"request": request, "current_page": "main"})
+    if engine.has_character:
+        return RedirectResponse("/game", status_code=302)
+    return templates.TemplateResponse("main.html", {
+        "request": request, "current_page": "main", "nav_state": _nav_state(),
+    })
 
 
 @app.get("/save")
 async def save_page(request: Request):
-    return templates.TemplateResponse("save.html", {"request": request, "current_page": "save"})
+    if not engine.has_world:
+        return RedirectResponse("/main", status_code=302)
+    if engine.has_character:
+        return RedirectResponse("/game", status_code=302)
+    return templates.TemplateResponse("save.html", {
+        "request": request, "current_page": "save", "nav_state": _nav_state(),
+    })
 
 
 @app.get("/createCharacter")
 async def character_page(request: Request):
-    return templates.TemplateResponse("character.html", {"request": request, "current_page": "createCharacter"})
+    if not engine.has_world:
+        return RedirectResponse("/main", status_code=302)
+    if engine.has_character:
+        return RedirectResponse("/game", status_code=302)
+    return templates.TemplateResponse("character.html", {
+        "request": request, "current_page": "createCharacter", "nav_state": _nav_state(),
+    })
 
 
 @app.get("/game")
 async def game_page(request: Request):
+    if not engine.has_world:
+        return RedirectResponse("/main", status_code=302)
     if not engine.has_character:
-        return RedirectResponse("/createCharacter", status_code=302)
-    return templates.TemplateResponse("game.html", {"request": request, "current_page": "game"})
+        return RedirectResponse("/save", status_code=302)
+    return templates.TemplateResponse("game.html", {
+        "request": request, "current_page": "game", "nav_state": _nav_state(),
+    })
 
 
 # ---------- 设置页面（入口 + 两个子页） ----------
@@ -163,7 +202,7 @@ async def game_page(request: Request):
 async def settings_page(request: Request):
     return templates.TemplateResponse(
         "settings.html",
-        {"request": request, "current_page": "settings"},
+        {"request": request, "current_page": "settings", "nav_state": _nav_state()},
     )
 
 
@@ -171,7 +210,7 @@ async def settings_page(request: Request):
 async def settings_model_page(request: Request):
     return templates.TemplateResponse(
         "settings_model.html",
-        {"request": request, "current_page": "settings"},
+        {"request": request, "current_page": "settings", "nav_state": _nav_state()},
     )
 
 
@@ -179,7 +218,7 @@ async def settings_model_page(request: Request):
 async def settings_rules_page(request: Request):
     return templates.TemplateResponse(
         "settings_rules.html",
-        {"request": request, "current_page": "settings"},
+        {"request": request, "current_page": "settings", "nav_state": _nav_state()},
     )
 
 

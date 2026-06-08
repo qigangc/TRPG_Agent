@@ -467,23 +467,72 @@
         const wasNear = isNearBottom(log, 80);
         const sep = document.createElement('div');
         sep.className = 'chat-msg__check';
-        let desc = '';
+
+        var success = false;
+        var detailParts = [];
+        var narrativeDesc = '';
+
         if (checkData) {
             if (typeof checkData === 'string') {
-                desc = checkData;
+                narrativeDesc = checkData;
             } else if (checkData.description) {
-                desc = checkData.description;
+                narrativeDesc = checkData.description;
             } else if (checkData.text) {
-                desc = checkData.text;
+                narrativeDesc = checkData.text;
             } else {
                 const skill = checkData.skill || checkData.attribute || '';
                 const dc = checkData.dc !== undefined ? ('DC ' + checkData.dc) : '';
                 const roll = checkData.roll !== undefined ? ('Roll ' + checkData.roll) : '';
                 const result = checkData.result || checkData.outcome || '';
-                desc = [skill, dc, roll, result].filter(Boolean).join(' · ');
+                narrativeDesc = [skill, dc, roll, result].filter(Boolean).join(' · ');
+            }
+            // success 字段来自 SSE check 事件
+            if (checkData.success !== undefined) {
+                success = !!checkData.success;
+            }
+            // 收集详情
+            if (checkData.attribute || checkData.skill) detailParts.push(checkData.attribute || checkData.skill);
+            if (checkData.dc !== undefined) detailParts.push('DC ' + checkData.dc);
+            if (checkData.roll !== undefined) detailParts.push('Roll ' + checkData.roll);
+            if (checkData.total !== undefined) detailParts.push('Total ' + checkData.total);
+        }
+
+        // 摘要行：只显示成功/失败标记
+        var summaryText = success ? '✓ 检定成功' : '✗ 检定失败';
+        var summarySpan = document.createElement('span');
+        summarySpan.className = 'chat-msg__check-summary' + (success ? ' chat-msg__check-summary--success' : ' chat-msg__check-summary--fail');
+        summarySpan.textContent = summaryText;
+
+        // 详情区域（默认隐藏）
+        var detailDiv = null;
+        if (detailParts.length > 0 || narrativeDesc) {
+            detailDiv = document.createElement('div');
+            detailDiv.className = 'chat-msg__check-detail';
+            if (narrativeDesc) {
+                var descLine = document.createElement('div');
+                descLine.textContent = narrativeDesc;
+                detailDiv.appendChild(descLine);
+            }
+            if (detailParts.length > 0) {
+                var statsLine = document.createElement('div');
+                statsLine.className = 'chat-msg__check-stats';
+                statsLine.textContent = detailParts.join(' · ');
+                detailDiv.appendChild(statsLine);
             }
         }
-        sep.textContent = '— ' + (desc || 'Check') + ' —';
+
+        sep.appendChild(summarySpan);
+        if (detailDiv) sep.appendChild(detailDiv);
+
+        // 点击展开/折叠
+        sep.addEventListener('click', function () {
+            if (detailDiv) {
+                var isHidden = detailDiv.style.display === 'none' || !detailDiv.style.display;
+                detailDiv.style.display = isHidden ? 'block' : 'none';
+                sep.classList.toggle('chat-msg__check--expanded', isHidden);
+            }
+        });
+
         msgDiv.appendChild(sep);
         maybeScroll(log, wasNear);
     }
@@ -803,6 +852,12 @@
         fetchScene();
         fetchCharacter();
         fetchHistory();
+    });
+
+    // 游戏中防止意外离开页面（关闭标签/刷新/后退）
+    window.addEventListener('beforeunload', function (e) {
+        e.preventDefault();
+        e.returnValue = '';
     });
 
     window.addEventListener('pageshow', function (e) {

@@ -63,17 +63,6 @@ class LLMClient:
                         f"LLM request failed after {Config.MAX_RETRIES} retries: {e}"
                     )
 
-    def chat(
-        self,
-        system_prompt: str,
-        messages: List[Dict[str, str]],
-    ) -> str:
-        """Non-streaming chat completion. Returns full response text."""
-        full_text = ""
-        for chunk in self.chat_stream(system_prompt, messages):
-            full_text += chunk
-        return full_text
-
     @staticmethod
     def parse_check_requests(text: str) -> List[Dict[str, any]]:
         """Parse check requests from AI output, e.g. [检定:力量 DC=15] or [挑战:敏捷 DC=20]."""

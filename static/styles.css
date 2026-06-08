@@ -238,6 +238,7 @@ hr {
 .chat-msg--user {
   background: #2c3e50;
   border-left: 3px solid #3498db;
+  width: fit-content;
   max-width: 80%;
   margin-left: auto;
   text-align: right;
@@ -247,6 +248,8 @@ hr {
   background: #1a1a2e;
   border: 1px solid #2c3e50;
   border-left: 3px solid #2ecc71;
+  width: fit-content;
+  max-width: 85%;
 }
 
 .chat-msg--system {
@@ -280,6 +283,47 @@ hr {
 }
 .chat-msg__dialogue--npc3 {
   color: #58d68d;
+}
+
+/* 检定结果 - 渐进披露 */
+.chat-msg__check {
+  margin-top: 8px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: rgba(44, 62, 80, 0.5);
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.2s;
+}
+.chat-msg__check:hover {
+  background: rgba(44, 62, 80, 0.8);
+}
+.chat-msg__check--expanded {
+  background: rgba(44, 62, 80, 0.8);
+}
+.chat-msg__check-summary {
+  font-size: 0.85em;
+  font-weight: bold;
+  letter-spacing: 0.5px;
+}
+.chat-msg__check-summary--success {
+  color: #2ecc71;
+}
+.chat-msg__check-summary--fail {
+  color: #e74c3c;
+}
+.chat-msg__check-detail {
+  display: none;
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px dashed rgba(236, 240, 241, 0.15);
+  font-size: 0.8em;
+  color: #95a5a6;
+  font-weight: normal;
+}
+.chat-msg__check-stats {
+  color: #7f8c8d;
+  font-family: monospace;
 }
 
 .quick-actions {
@@ -777,4 +821,709 @@ a.settings-entry:hover {
 @keyframes dice-blink {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.3; }
+}
+
+/* ============================================================
+   D&D 主题覆盖层 - 深色羊皮纸 + 黄铜烛光
+   主题：Dark Parchment & Brass Candlelight
+   ------------------------------------------------------------
+   色板：
+     深棕黑底色  #1a1410 / #211a14 / #2a1f17
+     羊皮纸面板  #3d2f23 / #4a3a2c
+     温暖米白    #e8dcc0 / #d4c4a0
+     黄铜金      #c9a961 / #d4af37 / #8a7340
+     龙血暗红    #8b1e1e / #a32424
+     苔藓翡翠    #6b8e4e / #8aa863
+     琥珀警告    #d4942a / #c08030
+   字体：
+     标题：Cinzel + 宋体
+     正文：EB Garamond + 思源宋体
+     数字：Cinzel Decorative
+   ============================================================ */
+
+:root {
+  --bg-deep:            #1a1410;
+  --bg-wood:            #211a14;
+  --bg-parchment:       #3d2f23;
+  --bg-parchment-light: #4a3a2c;
+  --bg-input:           #2a1f17;
+  --bg-hover:           #4a3a2c;
+  --bg-overlay:         rgba(26, 20, 16, 0.85);
+
+  --text-primary:   #e8dcc0;
+  --text-secondary: #d4c4a0;
+  --text-muted:     #a09078;
+  --text-inverse:   #1a1410;
+
+  --brass:        #c9a961;
+  --brass-bright: #d4af37;
+  --brass-dim:    #8a7340;
+  --brass-glow:        rgba(201, 169, 97, 0.25);
+  --brass-glow-strong: rgba(201, 169, 97, 0.50);
+
+  --dragon-blood:        #8b1e1e;
+  --dragon-blood-bright: #a32424;
+  --dragon-blood-glow:   rgba(163, 36, 36, 0.35);
+
+  --moss-green:        #6b8e4e;
+  --moss-green-bright: #8aa863;
+  --moss-green-glow:   rgba(107, 142, 78, 0.35);
+
+  --amber:     #d4942a;
+  --amber-dim: #c08030;
+
+  --font-serif-cn:  "Source Han Serif SC", "Noto Serif SC", "Songti SC", "STSong", "SimSun", serif;
+  --font-serif-en:  "EB Garamond", "Cardo", serif;
+  --font-display:   "Cinzel", "EB Garamond", serif;
+  --font-numeric:   "Cinzel Decorative", "Cinzel", monospace;
+
+  --radius-sharp: 2px;
+  --radius-soft:  4px;
+  --radius-card:  6px;
+}
+
+/* ---------- 全局基础 ---------- */
+body {
+  background:
+    radial-gradient(ellipse at 20% 15%, rgba(201, 169, 97, 0.04) 0%, transparent 55%),
+    radial-gradient(ellipse at 80% 85%, rgba(139, 30, 30, 0.05) 0%, transparent 55%),
+    var(--bg-deep);
+  color: var(--text-primary);
+  font-family: var(--font-serif-en), var(--font-serif-cn);
+  font-size: 16px;
+  line-height: 1.7;
+  letter-spacing: 0.01em;
+}
+
+a {
+  color: var(--brass);
+  text-decoration: none;
+  border-bottom: 1px dotted transparent;
+  transition: color 0.2s, border-color 0.2s;
+}
+a:hover {
+  color: var(--brass-bright);
+  border-bottom-color: var(--brass-bright);
+}
+
+h1, h2, h3, h4, h5, h6 {
+  color: var(--brass);
+  font-family: var(--font-display), var(--font-serif-cn);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+
+h1 {
+  font-size: 32px;
+  border-bottom: 2px double var(--brass-dim);
+  padding-bottom: 12px;
+  margin-bottom: 20px;
+  position: relative;
+}
+h1::after {
+  content: '✦';
+  position: absolute;
+  bottom: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg-deep);
+  padding: 0 10px;
+  color: var(--brass);
+  font-size: 14px;
+}
+
+h2 { font-size: 24px; }
+h3 { font-size: 19px; }
+
+p {
+  color: var(--text-primary);
+}
+
+hr {
+  border: none;
+  border-top: 1px solid var(--brass-dim);
+  border-bottom: 1px solid var(--brass-dim);
+  height: 3px;
+  margin: 24px 0;
+  position: relative;
+}
+hr::after {
+  content: '⚔';
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg-deep);
+  padding: 0 10px;
+  color: var(--brass);
+  font-size: 14px;
+}
+
+
+/* ---------- 顶部导航 - 木质横梁 ---------- */
+.topnav {
+  background: linear-gradient(180deg, #2a1f17 0%, #1a1410 100%);
+  border-bottom: 3px double var(--brass-dim);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+  padding: 0 32px;
+}
+.topnav a {
+  color: var(--text-muted);
+  font-family: var(--font-display), var(--font-serif-cn);
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  padding: 18px 22px;
+  border-bottom: 3px solid transparent;
+  position: relative;
+}
+.topnav a::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: linear-gradient(180deg, transparent, var(--brass-dim) 30%, var(--brass-dim) 70%, transparent);
+  opacity: 0.5;
+}
+.topnav a:first-child::before { display: none; }
+.topnav a:hover {
+  color: var(--brass);
+  text-shadow: 0 0 8px var(--brass-glow);
+}
+.topnav a.active {
+  color: var(--brass-bright);
+  border-bottom-color: var(--brass);
+  text-shadow: 0 0 12px var(--brass-glow-strong);
+}
+
+/* ---------- 卡片 - 深羊皮纸 ---------- */
+.card {
+  background:
+    radial-gradient(ellipse at top left, rgba(201, 169, 97, 0.06) 0%, transparent 50%),
+    radial-gradient(ellipse at bottom right, rgba(0, 0, 0, 0.3) 0%, transparent 50%),
+    linear-gradient(135deg, var(--bg-parchment) 0%, var(--bg-parchment-light) 100%);
+  border: 1px solid var(--brass-dim);
+  border-radius: var(--radius-card);
+  padding: 22px;
+  box-shadow:
+    inset 0 0 40px rgba(0, 0, 0, 0.25),
+    0 4px 18px rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(201, 169, 97, 0.08);
+  position: relative;
+}
+.card::before,
+.card::after {
+  content: '';
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 18 18'%3E%3Cpath d='M1 1 L8 1 M1 1 L1 8' stroke='%23c9a961' stroke-width='1.2' fill='none'/%3E%3Ccircle cx='1' cy='1' r='1.5' fill='%23c9a961'/%3E%3C/svg%3E");
+  pointer-events: none;
+}
+.card::before { top: 4px; left: 4px; }
+.card::after { top: 4px; right: 4px; transform: scaleX(-1); }
+
+.card h2,
+.card h3 {
+  color: var(--brass-bright);
+  border-bottom: 1px solid var(--brass-dim);
+  padding-bottom: 10px;
+}
+
+/* 世界选择卡片 */
+.world-card:hover {
+  border-color: var(--brass-bright);
+  box-shadow:
+    inset 0 0 40px rgba(0, 0, 0, 0.25),
+    0 0 24px var(--brass-glow-strong),
+    0 6px 24px rgba(0, 0, 0, 0.5);
+  transform: translateY(-2px);
+  transition: all 0.25s ease;
+}
+.world-card.selected {
+  border-color: var(--brass-bright);
+  background:
+    radial-gradient(ellipse at center, rgba(201, 169, 97, 0.12) 0%, transparent 60%),
+    linear-gradient(135deg, var(--bg-parchment-light) 0%, var(--bg-parchment) 100%);
+  box-shadow:
+    inset 0 0 60px var(--brass-glow),
+    0 0 30px var(--brass-glow-strong);
+}
+.world-card--disabled {
+  opacity: 0.4;
+  filter: grayscale(0.9) sepia(0.3);
+}
+.world-card--disabled:hover {
+  border-color: var(--brass-dim);
+  box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.25);
+  transform: none;
+}
+.world-card__disabled-note {
+  background: var(--bg-deep);
+  color: var(--text-muted);
+  border: 1px solid var(--brass-dim);
+  font-family: var(--font-serif-cn);
+  font-size: 12px;
+  padding: 3px 10px;
+}
+
+/* ---------- 按钮 - 黄铜雕刻感 ---------- */
+.btn {
+  padding: 10px 24px;
+  border-radius: var(--radius-soft);
+  font-family: var(--font-display), var(--font-serif-cn);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  border: 1px solid var(--brass-dim);
+  text-transform: none;
+  transition: all 0.2s ease;
+  position: relative;
+}
+.btn-primary {
+  background: linear-gradient(180deg, var(--brass) 0%, var(--brass-dim) 100%);
+  color: var(--bg-deep);
+  border-color: var(--brass-bright);
+  text-shadow: 0 1px 0 rgba(255, 220, 150, 0.4);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 220, 150, 0.4),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.3),
+    0 2px 6px rgba(0, 0, 0, 0.4);
+}
+.btn-primary:hover:not(:disabled) {
+  background: linear-gradient(180deg, var(--brass-bright) 0%, var(--brass) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 220, 150, 0.5),
+    0 0 20px var(--brass-glow-strong),
+    0 3px 10px rgba(0, 0, 0, 0.5);
+  transform: translateY(-1px);
+}
+.btn-secondary {
+  background: linear-gradient(180deg, var(--bg-parchment-light) 0%, var(--bg-parchment) 100%);
+  color: var(--brass);
+  border-color: var(--brass-dim);
+  box-shadow:
+    inset 0 1px 0 rgba(201, 169, 97, 0.15),
+    0 2px 6px rgba(0, 0, 0, 0.4);
+}
+.btn-secondary:hover:not(:disabled) {
+  background: linear-gradient(180deg, var(--bg-hover) 0%, var(--bg-parchment) 100%);
+  border-color: var(--brass);
+  color: var(--brass-bright);
+  box-shadow:
+    inset 0 1px 0 rgba(201, 169, 97, 0.2),
+    0 0 16px var(--brass-glow);
+}
+.btn-danger {
+  background: linear-gradient(180deg, var(--dragon-blood-bright) 0%, var(--dragon-blood) 100%);
+  color: var(--text-primary);
+  border-color: var(--dragon-blood-bright);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.4);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 100, 100, 0.2),
+    0 2px 6px rgba(0, 0, 0, 0.4);
+}
+.btn-danger:hover:not(:disabled) {
+  background: linear-gradient(180deg, #b82929 0%, var(--dragon-blood-bright) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 120, 120, 0.3),
+    0 0 18px var(--dragon-blood-glow);
+}
+
+/* ---------- 聊天日志 - 卷轴感 ---------- */
+.chat-log {
+  background:
+    radial-gradient(ellipse at top, rgba(201, 169, 97, 0.04) 0%, transparent 60%),
+    linear-gradient(180deg, var(--bg-parchment) 0%, var(--bg-deep) 100%);
+  border: 1px solid var(--brass-dim);
+  border-radius: var(--radius-card);
+  padding: 24px;
+  box-shadow:
+    inset 0 0 60px rgba(0, 0, 0, 0.4),
+    0 4px 16px rgba(0, 0, 0, 0.4);
+  max-height: 560px;
+}
+
+.chat-msg {
+  font-family: var(--font-serif-en), var(--font-serif-cn);
+  font-size: 16px;
+  line-height: 1.75;
+  padding: 14px 18px;
+  border-radius: var(--radius-soft);
+  margin-bottom: 14px;
+}
+
+/* 用户气泡 - 玩家小卡 */
+.chat-msg--user {
+  background: linear-gradient(135deg, #3a2818 0%, #2a1f17 100%);
+  border: 1px solid var(--brass-dim);
+  border-left: 3px solid var(--brass);
+  color: var(--text-secondary);
+  box-shadow:
+    inset 0 1px 0 rgba(201, 169, 97, 0.1),
+    0 2px 8px rgba(0, 0, 0, 0.4);
+  font-style: italic;
+}
+
+/* AI气泡 - DM卷轴感 */
+.chat-msg--ai {
+  background:
+    radial-gradient(ellipse at top left, rgba(201, 169, 97, 0.05) 0%, transparent 50%),
+    linear-gradient(135deg, var(--bg-parchment) 0%, var(--bg-parchment-light) 100%);
+  border: 1px solid var(--brass-dim);
+  border-left: 3px solid var(--brass-bright);
+  color: var(--text-primary);
+  box-shadow:
+    inset 0 0 30px rgba(0, 0, 0, 0.2),
+    0 2px 10px rgba(0, 0, 0, 0.4);
+}
+
+.chat-msg--system {
+  background: rgba(212, 148, 42, 0.08);
+  border: 1px solid var(--amber-dim);
+  border-left: 3px solid var(--amber);
+  color: var(--amber);
+  font-style: italic;
+}
+
+/* 经验值徽章 */
+.chat-msg__exp {
+  margin-top: 12px;
+  padding: 8px 14px;
+  color: var(--brass-bright);
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: 0.08em;
+  text-align: center;
+  background: linear-gradient(90deg, transparent 0%, rgba(212, 175, 55, 0.12) 50%, transparent 100%);
+  border-top: 1px solid var(--brass-dim);
+  border-bottom: 1px solid var(--brass-dim);
+  text-shadow: 0 0 10px var(--brass-glow);
+}
+
+/* 角色对话彩色 */
+.chat-msg__dialogue {
+  font-weight: 600;
+  font-style: normal;
+}
+.chat-msg__dialogue--npc1 { color: #6ba8d6; text-shadow: 0 0 4px rgba(107, 168, 214, 0.3); }
+.chat-msg__dialogue--npc2 { color: #c89bb3; text-shadow: 0 0 4px rgba(200, 155, 179, 0.3); }
+.chat-msg__dialogue--npc3 { color: var(--moss-green-bright); text-shadow: 0 0 4px var(--moss-green-glow); }
+
+/* 检定 - 仪式感 */
+.chat-msg__check {
+  margin-top: 12px;
+  padding: 8px 14px;
+  border-radius: var(--radius-soft);
+  background: rgba(26, 20, 16, 0.6);
+  border: 1px solid var(--brass-dim);
+  font-family: var(--font-display);
+  letter-spacing: 0.05em;
+}
+.chat-msg__check:hover {
+  background: rgba(26, 20, 16, 0.85);
+  border-color: var(--brass);
+}
+.chat-msg__check--expanded {
+  background: rgba(26, 20, 16, 0.9);
+  border-color: var(--brass);
+}
+.chat-msg__check-summary {
+  font-family: var(--font-display);
+  font-size: 14px;
+  letter-spacing: 0.1em;
+}
+.chat-msg__check-summary--success {
+  color: var(--moss-green-bright);
+  text-shadow: 0 0 10px var(--moss-green-glow);
+}
+.chat-msg__check-summary--fail {
+  color: var(--dragon-blood-bright);
+  text-shadow: 0 0 10px var(--dragon-blood-glow);
+}
+.chat-msg__check-detail {
+  color: var(--text-muted);
+  border-top: 1px dashed var(--brass-dim);
+  font-family: var(--font-serif-en);
+}
+.chat-msg__check-stats {
+  color: var(--brass);
+  font-family: var(--font-numeric);
+}
+
+/* 快捷指令按钮 */
+.quick-action-btn {
+  background: linear-gradient(180deg, var(--bg-parchment) 0%, var(--bg-deep) 100%);
+  border: 1px solid var(--brass-dim);
+  color: var(--text-secondary);
+  font-family: var(--font-serif-cn);
+  font-size: 14px;
+  border-radius: var(--radius-soft);
+  padding: 8px 16px;
+  box-shadow: inset 0 1px 0 rgba(201, 169, 97, 0.1);
+}
+.quick-action-btn:hover:not(:disabled) {
+  background: linear-gradient(180deg, var(--bg-parchment-light) 0%, var(--bg-parchment) 100%);
+  border-color: var(--brass);
+  color: var(--brass-bright);
+  box-shadow:
+    inset 0 1px 0 rgba(201, 169, 97, 0.2),
+    0 0 14px var(--brass-glow);
+}
+
+/* 剧本弹窗 */
+.scenario-modal {
+  background: rgba(15, 10, 6, 0.88);
+  backdrop-filter: blur(6px);
+}
+.scenario-modal__panel {
+  background:
+    radial-gradient(ellipse at top, rgba(201, 169, 97, 0.05) 0%, transparent 50%),
+    linear-gradient(135deg, var(--bg-parchment) 0%, var(--bg-parchment-light) 100%);
+  border: 2px double var(--brass);
+  border-radius: var(--radius-card);
+  box-shadow:
+    inset 0 0 60px rgba(0, 0, 0, 0.4),
+    0 24px 60px rgba(0, 0, 0, 0.7),
+    0 0 40px var(--brass-glow);
+}
+.scenario-option {
+  background: linear-gradient(180deg, var(--bg-deep) 0%, var(--bg-wood) 100%);
+  border: 1px solid var(--brass-dim);
+  color: var(--text-primary);
+  font-family: var(--font-serif-en), var(--font-serif-cn);
+}
+.scenario-option span {
+  color: var(--text-muted);
+  font-family: var(--font-serif-cn);
+}
+.scenario-option:hover {
+  border-color: var(--brass);
+  background: linear-gradient(180deg, var(--bg-wood) 0%, var(--bg-parchment) 100%);
+  box-shadow: 0 0 16px var(--brass-glow);
+}
+
+/* ---------- 场景栏 - 木质卷轴 ---------- */
+.scene-bar {
+  background:
+    radial-gradient(ellipse at top, rgba(201, 169, 97, 0.05) 0%, transparent 60%),
+    linear-gradient(180deg, var(--bg-wood) 0%, var(--bg-deep) 100%);
+  border: 1px solid var(--brass-dim);
+  border-radius: var(--radius-card);
+  padding: 14px 20px;
+  color: var(--text-primary);
+  font-family: var(--font-serif-en), var(--font-serif-cn);
+  box-shadow:
+    inset 0 0 30px rgba(0, 0, 0, 0.3),
+    0 2px 10px rgba(0, 0, 0, 0.4);
+}
+
+/* 空状态 */
+.empty-state {
+  color: var(--text-muted);
+  font-family: var(--font-serif-en), var(--font-serif-cn);
+  font-style: italic;
+  font-size: 16px;
+}
+
+/* ---------- 表单 ---------- */
+.form-label {
+  color: var(--brass);
+  font-family: var(--font-display), var(--font-serif-cn);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  font-size: 15px;
+}
+.form-label .form-hint {
+  color: var(--text-muted);
+  font-family: var(--font-serif-en);
+  font-style: italic;
+}
+
+.form-input,
+.form-textarea,
+.form-select {
+  background: var(--bg-input);
+  color: var(--text-primary);
+  border: 1px solid var(--brass-dim);
+  border-radius: var(--radius-soft);
+  font-family: var(--font-serif-en), var(--font-serif-cn);
+  font-size: 15px;
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+.form-input:focus,
+.form-textarea:focus,
+.form-select:focus {
+  border-color: var(--brass);
+  box-shadow:
+    inset 0 2px 6px rgba(0, 0, 0, 0.4),
+    0 0 12px var(--brass-glow);
+}
+.form-input::placeholder,
+.form-textarea::placeholder {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* 属性步进器 */
+.attribute-stepper {
+  background: var(--bg-input);
+  border: 1px solid var(--brass-dim);
+  border-radius: var(--radius-soft);
+}
+.attribute-stepper-btn {
+  background: linear-gradient(180deg, var(--brass-dim) 0%, #5a4a25 100%);
+  color: var(--bg-deep);
+  font-family: var(--font-display);
+  font-weight: 700;
+  text-shadow: 0 1px 0 rgba(255, 220, 150, 0.3);
+}
+.attribute-stepper-btn:hover {
+  background: linear-gradient(180deg, var(--brass) 0%, var(--brass-dim) 100%);
+}
+.attribute-value-input {
+  background: var(--bg-input);
+  color: var(--brass-bright);
+  font-family: var(--font-numeric);
+  font-weight: 700;
+  border-left: 1px solid var(--brass-dim);
+  border-right: 1px solid var(--brass-dim);
+}
+.attribute-detail {
+  color: var(--brass);
+  font-family: var(--font-numeric);
+}
+
+/* 工具类覆盖 */
+.text-muted   { color: var(--text-muted); }
+.text-success { color: var(--moss-green-bright); }
+.text-danger  { color: var(--dragon-blood-bright); }
+.text-warning { color: var(--amber); }
+
+/* 滚动条 - 黄铜质感 */
+.chat-log::-webkit-scrollbar-track {
+  background: var(--bg-deep);
+  border-left: 1px solid var(--brass-dim);
+}
+.chat-log::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, var(--brass-dim) 0%, #5a4a25 100%);
+  border-radius: 4px;
+}
+.chat-log::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, var(--brass) 0%, var(--brass-dim) 100%);
+}
+
+/* ---------- 设置页 ---------- */
+a.settings-entry {
+  color: inherit;
+}
+a.settings-entry:hover {
+  border-color: var(--brass);
+  background:
+    radial-gradient(ellipse at center, var(--brass-glow) 0%, transparent 60%),
+    linear-gradient(135deg, var(--bg-parchment-light) 0%, var(--bg-parchment) 100%);
+  box-shadow:
+    inset 0 0 40px rgba(0, 0, 0, 0.25),
+    0 0 24px var(--brass-glow-strong);
+}
+.settings-entry-icon {
+  color: var(--brass);
+  text-shadow: 0 0 12px var(--brass-glow);
+}
+.form-input:disabled,
+.form-select:disabled {
+  background: #1f1813;
+  color: var(--text-muted);
+  border-color: #5a4530;
+}
+.settings-status        { color: var(--text-muted); font-family: var(--font-serif-cn); }
+.settings-status--info    { color: var(--brass-bright); }
+.settings-status--success { color: var(--moss-green-bright); }
+.settings-status--error   { color: var(--dragon-blood-bright); }
+.badge-unavailable {
+  color: var(--amber);
+  background: rgba(212, 148, 42, 0.12);
+  border-color: var(--amber-dim);
+  font-family: var(--font-serif-cn);
+}
+
+/* 存档列表 */
+#save-list li {
+  background: linear-gradient(180deg, var(--bg-parchment) 0%, var(--bg-deep) 100%);
+  border: 1px solid var(--brass-dim);
+  color: var(--text-primary);
+  font-family: var(--font-serif-en), var(--font-serif-cn);
+  padding: 12px 16px;
+}
+#save-list li:hover {
+  border-color: var(--brass);
+  box-shadow: 0 0 14px var(--brass-glow);
+}
+#save-list li.selected {
+  border-color: var(--brass-bright);
+  background:
+    radial-gradient(ellipse at left, var(--brass-glow) 0%, transparent 60%),
+    linear-gradient(180deg, var(--bg-parchment-light) 0%, var(--bg-parchment) 100%);
+  box-shadow:
+    inset 0 0 30px rgba(0, 0, 0, 0.3),
+    0 0 24px var(--brass-glow-strong);
+}
+
+/* ---------- 骰子区 - 仪式感 ---------- */
+.dice-area {
+  background:
+    radial-gradient(ellipse at center, rgba(201, 169, 97, 0.06) 0%, transparent 70%),
+    linear-gradient(135deg, var(--bg-parchment) 0%, var(--bg-deep) 100%);
+  border: 2px double var(--brass);
+  border-radius: var(--radius-card);
+  padding: 20px;
+  box-shadow:
+    inset 0 0 40px rgba(0, 0, 0, 0.4),
+    0 4px 18px rgba(0, 0, 0, 0.5),
+    0 0 24px var(--brass-glow);
+}
+.dice-prompt {
+  font-family: var(--font-display), var(--font-serif-cn);
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--brass-bright);
+  letter-spacing: 0.08em;
+  text-shadow: 0 0 12px var(--brass-glow);
+  margin-bottom: 16px;
+}
+.dice-result {
+  background: var(--bg-deep);
+  border: 1px solid var(--brass-dim);
+  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.6);
+}
+.dice-result__d20 {
+  font-family: var(--font-numeric);
+  font-size: 56px;
+  color: var(--brass-bright);
+  text-shadow:
+    0 0 14px var(--brass-glow-strong),
+    0 2px 4px rgba(0, 0, 0, 0.6);
+  font-weight: 700;
+}
+.dice-result__detail {
+  color: var(--text-secondary);
+  font-family: var(--font-serif-en), var(--font-serif-cn);
+}
+.dice-result__detail .success {
+  color: var(--moss-green-bright);
+  text-shadow: 0 0 8px var(--moss-green-glow);
+}
+.dice-result__detail .failure {
+  color: var(--dragon-blood-bright);
+  text-shadow: 0 0 8px var(--dragon-blood-glow);
+}
+#inspiration-dice-btn.active {
+  border-color: var(--moss-green-bright) !important;
+  background: rgba(107, 142, 78, 0.18) !important;
+  color: var(--moss-green-bright) !important;
+  box-shadow: 0 0 16px var(--moss-green-glow) !important;
 }

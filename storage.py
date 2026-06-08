@@ -70,12 +70,3 @@ def list_saves() -> List[Dict[str, Any]]:
             continue
 
     return saves
-
-
-def delete_save(filepath: str) -> bool:
-    """Delete a save file. Returns True if successful."""
-    try:
-        os.remove(filepath)
-        return True
-    except OSError:
-        return False

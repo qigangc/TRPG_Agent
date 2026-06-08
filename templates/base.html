@@ -4,14 +4,22 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}TRPG Agent{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Cinzel+Decorative:wght@700&family=EB+Garamond:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
   <nav class="topnav">
+    {% if not nav_state.in_game %}
     <a href="/main" class="{% if current_page == 'main' %}active{% endif %}">选择世界</a>
+    {% endif %}
+    {% if nav_state.world_selected and not nav_state.has_character %}
     <a href="/save" class="{% if current_page == 'save' %}active{% endif %}">存档管理</a>
-    <a href="/createCharacter" class="{% if current_page == 'createCharacter' %}active{% endif %}">创建角色</a>
+    {% endif %}
+    {% if nav_state.in_game %}
     <a href="/game" class="{% if current_page == 'game' %}active{% endif %}">冒险</a>
+    {% endif %}
     <a href="/settings" class="{% if current_page == 'settings' %}active{% endif %}">设置</a>
   </nav>
   <main class="page-container">{% block content %}{% endblock %}</main>

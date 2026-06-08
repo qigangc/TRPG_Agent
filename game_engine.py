@@ -7,8 +7,8 @@ from typing import Dict, Generator, List, Optional, Tuple
 from config import Config
 from llm_client import LLMClient
 from rules.character import Character
-from rules.events import make_check, make_check_with_roll, CheckResult, ATTRIBUTE_CN
-from storage import save_game, load_game, list_saves
+from rules.events import make_check_with_roll, CheckResult, ATTRIBUTE_CN
+from storage import save_game, load_game
 from worlds import get_world, WORLD_REGISTRY
 from worlds.base import WorldBase
 
@@ -20,6 +20,7 @@ class GameEngine:
         self.character: Optional[Character] = None
         self.world_id: str = "dnd"
         self.world: WorldBase = get_world("dnd")
+        self.world_selected: bool = False
         self.messages: List[Dict[str, str]] = []
         self.last_quick_actions: List[str] = []
         self.llm: Optional[LLMClient] = None
@@ -134,6 +135,10 @@ class GameEngine:
         self._pending_exp = None
         return c
 
+    @property
+    def has_world(self) -> bool:
+        return self.world_selected
+
     def switch_world(self, world_id: str) -> str:
         """Switch world, keep character, clear conversation."""
         if world_id not in WORLD_REGISTRY:
@@ -141,6 +146,7 @@ class GameEngine:
 
         self.world_id = world_id
         self.world = get_world(world_id)
+        self.world_selected = True
         self.messages = []
         self.last_quick_actions = []
         self._initialized = False
@@ -234,48 +240,6 @@ class GameEngine:
                 setattr(self.character, attr, current + 2)
                 logger.info(f"Breakthrough! {attr} +2")
 
-    def perform_check(
-        self,
-        attribute: str,
-        dc: int,
-        advantage: bool = False,
-        disadvantage: bool = False,
-        use_inspiration: bool = False,
-    ) -> Tuple[CheckResult, str]:
-        """
-        Execute a check and return (result, narrative_description).
-        Also handles world-specific critical effects.
-        """
-        if not self.has_character:
-            raise ValueError("No character to perform check")
-
-        result = make_check(
-            self.character, attribute, dc,
-            advantage=advantage,
-            disadvantage=disadvantage,
-            use_inspiration=use_inspiration,
-        )
-
-        if result.is_critical_success:
-            desc = self.world.describe_critical_success(attribute)
-            effect = self.world.on_critical_success(self.character)
-            if effect == "breakthrough":
-                desc += "\n🌟 修仙突破触发！即将获得属性提升！"
-            elif effect:
-                desc += f"\n{effect}"
-        elif result.is_critical_failure:
-            desc = self.world.describe_critical_failure(attribute)
-            effect = self.world.on_critical_failure(self.character)
-            if effect:
-                desc += f"\n{effect}"
-        elif result.success:
-            desc = self.world.describe_check_success(attribute, result.total, dc)
-        else:
-            desc = self.world.describe_check_failure(attribute, result.total, dc)
-
-        full_desc = f"{result.description}\n{desc}"
-        return result, full_desc
-
     def save(self) -> str:
         """Save current game. Returns file path."""
         if not self.has_character:
@@ -288,20 +252,10 @@ class GameEngine:
         self.character = data["character"]
         self.world_id = data["world_id"]
         self.world = get_world(self.world_id)
+        self.world_selected = True
         self.messages = data.get("messages", [])
         self._restore_quick_actions()
         self._initialized = True
         self.pending_check = None
         self._pending_exp = None
         return f"Loaded: {self.character.name} (Lv.{self.character.level}) in {self.world.world_name}"
-
-    def get_save_list(self) -> List[Dict]:
-        return list_saves()
-
-    def get_character_info(self) -> str:
-        if not self.has_character:
-            return "No character created"
-        return self.character.summary()
-
-    def get_world_info(self) -> str:
-        return f"Current world: {self.world.world_name} ({self.world.tone})"
