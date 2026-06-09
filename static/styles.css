@@ -998,6 +998,33 @@ hr::after {
   border-bottom-color: var(--brass);
   text-shadow: 0 0 12px var(--brass-glow-strong);
 }
+/* 导航栏退出游戏按钮 */
+.topnav-exit {
+  color: var(--dragon-blood) !important;
+  font-family: var(--font-display), var(--font-serif-cn);
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  padding: 18px 22px;
+  border-bottom: 3px solid transparent;
+  cursor: pointer;
+  text-decoration: none;
+  position: relative;
+}
+.topnav-exit::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: linear-gradient(180deg, transparent, var(--brass-dim) 30%, var(--brass-dim) 70%, transparent);
+  opacity: 0.5;
+}
+.topnav-exit:hover {
+  color: #e74c3c !important;
+  text-shadow: 0 0 8px rgba(231, 76, 60, 0.5);
+}
 
 /* ---------- 卡片 - 深羊皮纸 ---------- */
 .card {
@@ -1526,4 +1553,20 @@ a.settings-entry:hover {
   background: rgba(107, 142, 78, 0.18) !important;
   color: var(--moss-green-bright) !important;
   box-shadow: 0 0 16px var(--moss-green-glow) !important;
+}
+
+/* ---------- 导航栏退出按钮 ---------- */
+.topnav-exit {
+  color: var(--dragon-blood) !important;
+  font-style: italic;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+.topnav-exit:hover {
+  opacity: 1;
+  text-shadow: 0 0 10px var(--dragon-blood-glow) !important;
+}
+#exit-game-btn {
+  width: 100%;
+  margin-top: 8px;
 }

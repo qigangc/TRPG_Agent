@@ -759,19 +759,35 @@
 
     // ---------- Init ----------
     function bindLeaveConfirm() {
+        // 游戏中点击导航栏链接时确认（设置页除外）
         document.querySelectorAll('.topnav a[href]').forEach(function (link) {
             const href = link.getAttribute('href') || '';
-            if (href === '/game') return;
+            if (href === '/game' || href === '/settings' || href.startsWith('/settings/')) return;
             link.addEventListener('click', function (e) {
-                if (!window.confirm('确定要离开冒险页面吗？')) {
+                if (!window.confirm('确定要离开冒险页面吗？未保存的进度将丢失。')) {
                     e.preventDefault();
                 }
             });
         });
     }
 
+    function bindExitBtn() {
+        // 退出游戏按钮（导航栏 + 侧边栏均可触发）
+        var exitBtn = document.getElementById('exit-game-btn');
+        if (exitBtn) {
+            exitBtn.addEventListener('click', function () {
+                if (!window.confirm('确定要退出当前游戏吗？未保存的进度将丢失。')) return;
+                fetch('/api/session/exit', { method: 'POST', credentials: 'same-origin' })
+                    .then(function (r) { return r.json(); })
+                    .then(function (d) { if (d.ok) window.location.href = '/main'; })
+                    .catch(function () { alert('退出失败，请重试。'); });
+            });
+        }
+    }
+
     function bindEvents() {
         bindLeaveConfirm();
+        bindExitBtn();
         const btn = $sendBtn();
         if (btn) {
             btn.addEventListener('click', function () {

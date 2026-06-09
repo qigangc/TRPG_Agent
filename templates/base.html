@@ -11,18 +11,34 @@
 </head>
 <body>
   <nav class="topnav">
-    {% if not nav_state.in_game %}
+    {% if nav_state.phase == 'no_world' or nav_state.phase == 'save_menu' %}
     <a href="/main" class="{% if current_page == 'main' %}active{% endif %}">选择世界</a>
     {% endif %}
-    {% if nav_state.world_selected and not nav_state.has_character %}
+    {% if nav_state.phase == 'save_menu' %}
     <a href="/save" class="{% if current_page == 'save' %}active{% endif %}">存档管理</a>
     {% endif %}
-    {% if nav_state.in_game %}
+    {% if nav_state.phase == 'in_game' %}
     <a href="/game" class="{% if current_page == 'game' %}active{% endif %}">冒险</a>
+    <a href="#" id="nav-exit-btn" class="topnav-exit">退出游戏</a>
     {% endif %}
     <a href="/settings" class="{% if current_page == 'settings' %}active{% endif %}">设置</a>
   </nav>
   <main class="page-container">{% block content %}{% endblock %}</main>
   {% block scripts %}{% endblock %}
+  <script>
+  // 退出游戏按钮（仅在游戏中导航栏显示）
+  (function(){
+    var btn = document.getElementById('nav-exit-btn');
+    if (!btn) return;
+    btn.addEventListener('click', function(e){
+      e.preventDefault();
+      if (!confirm('确定要退出当前游戏吗？未保存的进度将丢失。')) return;
+      fetch('/api/session/exit', {method:'POST', credentials:'same-origin'})
+        .then(function(r){ return r.json(); })
+        .then(function(d){ if(d.ok) window.location.href = '/main'; })
+        .catch(function(){ alert('退出失败，请重试。'); });
+    });
+  })();
+  </script>
 </body>
 </html>

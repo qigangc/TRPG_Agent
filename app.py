@@ -68,9 +68,9 @@ class WorldSelectRequest(BaseModel):
 async def api_game_state():
     """返回当前游戏流程状态，供前端导航判断。"""
     return {
-        "world_selected": engine.has_world,
+        "phase": engine.phase,
+        "has_world": engine.has_world,
         "has_character": engine.has_character,
-        "in_game": engine.has_character and engine.world_selected,
     }
 
 
@@ -105,13 +105,13 @@ async def select_world(body: WorldSelectRequest):
 
 @app.get("/api/scene")
 async def api_scene():
-    if not engine.has_character:
+    if not engine.has_character or not engine.has_world:
         return {"has_character": False}
     return {
         "has_character": True,
         "scene_name": engine.character.current_scene or "",
-        "world_id": engine.world_id,
-        "world_name": engine.world.world_name,
+        "world_id": engine.world_id or "",
+        "world_name": engine.world.world_name if engine.world else "",
         "world_emoji": getattr(engine.world, "world_emoji", ""),
         "hp": engine.character.hp,
         "hp_max": engine.character.max_hp,
@@ -142,22 +142,42 @@ async def api_history():
 
 def _nav_state() -> dict:
     """返回导航栏所需的游戏流程状态。"""
+    phase = engine.phase
     return {
-        "world_selected": engine.has_world,
+        "phase": phase,
+        "has_world": engine.has_world,
         "has_character": engine.has_character,
-        "in_game": engine.has_character and engine.has_world,
     }
+
+
+def _redirect_for_phase(target: str):
+    """根据当前阶段判断 target 页面是否可访问，否则返回正确页面的重定向。"""
+    phase = engine.phase
+    # phase → 允许的页面
+    allowed = {
+        "no_world": {"main", "settings", "settings_model", "settings_rules"},
+        "save_menu": {"main", "save", "createCharacter", "settings", "settings_model", "settings_rules"},
+        "in_game": {"game", "settings", "settings_model", "settings_rules"},
+    }
+    if target in allowed.get(phase, set()):
+        return None  # 允许访问
+    # 返回该阶段应去的页面
+    dest = {"no_world": "/main", "save_menu": "/save", "in_game": "/game"}.get(phase, "/main")
+    return RedirectResponse(dest, status_code=302)
 
 
 @app.get("/")
 async def root():
-    return RedirectResponse("/main", status_code=302)
+    """智能重定向：根据当前阶段跳转到正确页面。"""
+    dest = {"no_world": "/main", "save_menu": "/save", "in_game": "/game"}.get(engine.phase, "/main")
+    return RedirectResponse(dest, status_code=302)
 
 
 @app.get("/main")
 async def main_page(request: Request):
-    if engine.has_character:
-        return RedirectResponse("/game", status_code=302)
+    blocked = _redirect_for_phase("main")
+    if blocked:
+        return blocked
     return templates.TemplateResponse("main.html", {
         "request": request, "current_page": "main", "nav_state": _nav_state(),
     })
@@ -165,10 +185,9 @@ async def main_page(request: Request):
 
 @app.get("/save")
 async def save_page(request: Request):
-    if not engine.has_world:
-        return RedirectResponse("/main", status_code=302)
-    if engine.has_character:
-        return RedirectResponse("/game", status_code=302)
+    blocked = _redirect_for_phase("save")
+    if blocked:
+        return blocked
     return templates.TemplateResponse("save.html", {
         "request": request, "current_page": "save", "nav_state": _nav_state(),
     })
@@ -176,10 +195,9 @@ async def save_page(request: Request):
 
 @app.get("/createCharacter")
 async def character_page(request: Request):
-    if not engine.has_world:
-        return RedirectResponse("/main", status_code=302)
-    if engine.has_character:
-        return RedirectResponse("/game", status_code=302)
+    blocked = _redirect_for_phase("createCharacter")
+    if blocked:
+        return blocked
     return templates.TemplateResponse("character.html", {
         "request": request, "current_page": "createCharacter", "nav_state": _nav_state(),
     })
@@ -187,16 +205,15 @@ async def character_page(request: Request):
 
 @app.get("/game")
 async def game_page(request: Request):
-    if not engine.has_world:
-        return RedirectResponse("/main", status_code=302)
-    if not engine.has_character:
-        return RedirectResponse("/save", status_code=302)
+    blocked = _redirect_for_phase("game")
+    if blocked:
+        return blocked
     return templates.TemplateResponse("game.html", {
         "request": request, "current_page": "game", "nav_state": _nav_state(),
     })
 
 
-# ---------- 设置页面（入口 + 两个子页） ----------
+# ---------- 设置页面（任何阶段均可访问） ----------
 
 @app.get("/settings")
 async def settings_page(request: Request):
@@ -220,6 +237,13 @@ async def settings_rules_page(request: Request):
         "settings_rules.html",
         {"request": request, "current_page": "settings", "nav_state": _nav_state()},
     )
+
+
+@app.post("/api/session/exit")
+async def api_session_exit():
+    """退出当前游戏会话，重置到世界选择阶段。"""
+    engine.reset_session()
+    return {"ok": True}
 
 
 class CreateCharacterRequest(BaseModel):
@@ -266,10 +290,11 @@ async def create_character(req: CreateCharacterRequest):
 @app.get("/api/character")
 async def get_character():
     if engine.has_character:
+        wid = engine.world_id or "dnd"
         return {
             "has_character": True,
             "character": engine.character.to_dict(),
-            "card_html": engine.character.card_html(engine.world_id),
+            "card_html": engine.character.card_html(wid),
         }
     return {"has_character": False}
 
@@ -311,6 +336,13 @@ async def api_save():
         return JSONResponse({"error": str(e)}, status_code=400)
 
 
+@app.post("/api/session/exit")
+async def api_session_exit():
+    """退出当前游戏会话，重置到世界选择阶段。"""
+    engine.reset_session()
+    return {"ok": True}
+
+
 SCENARIO_POOLS = {
     "dnd": [
         {"title": "失落矿坑的回声", "prompt": "你收到一封染血的求救信，指向北境山脉中一座重新传出敲击声的废弃矿坑。"},
@@ -331,7 +363,8 @@ SCENARIO_POOLS = {
 
 @app.get("/api/scenarios")
 async def api_scenarios():
-    pool = SCENARIO_POOLS.get(engine.world_id) or SCENARIO_POOLS["dnd"]
+    wid = engine.world_id or "dnd"
+    pool = SCENARIO_POOLS.get(wid) or SCENARIO_POOLS["dnd"]
     count = random.randint(1, min(3, len(pool)))
     return {"scenarios": random.sample(pool, count)}
 

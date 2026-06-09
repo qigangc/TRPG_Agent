@@ -18,9 +18,8 @@ logger = logging.getLogger(__name__)
 class GameEngine:
     def __init__(self):
         self.character: Optional[Character] = None
-        self.world_id: str = "dnd"
-        self.world: WorldBase = get_world("dnd")
-        self.world_selected: bool = False
+        self.world_id: Optional[str] = None
+        self.world: Optional[WorldBase] = None
         self.messages: List[Dict[str, str]] = []
         self.last_quick_actions: List[str] = []
         self.llm: Optional[LLMClient] = None
@@ -57,6 +56,8 @@ class GameEngine:
             raise ValueError("No character to perform check")
         if self.pending_check is None:
             raise ValueError("No pending check to resolve")
+        if self.world is None:
+            raise ValueError("No world selected")
 
         attr = self.pending_check["attribute"]
         dc = self.pending_check["dc"]
@@ -137,7 +138,27 @@ class GameEngine:
 
     @property
     def has_world(self) -> bool:
-        return self.world_selected
+        return self.world is not None
+
+    @property
+    def phase(self) -> str:
+        """返回当前游戏流程阶段：no_world / save_menu / in_game"""
+        if not self.has_world:
+            return "no_world"
+        if not self.has_character:
+            return "save_menu"
+        return "in_game"
+
+    def reset_session(self) -> None:
+        """重置游戏会话，回到世界选择阶段。"""
+        self.character = None
+        self.world_id = None
+        self.world = None
+        self.messages = []
+        self.last_quick_actions = []
+        self._initialized = False
+        self.pending_check = None
+        self._pending_exp = None
 
     def switch_world(self, world_id: str) -> str:
         """Switch world, keep character, clear conversation."""
@@ -146,7 +167,6 @@ class GameEngine:
 
         self.world_id = world_id
         self.world = get_world(world_id)
-        self.world_selected = True
         self.messages = []
         self.last_quick_actions = []
         self._initialized = False
@@ -155,6 +175,8 @@ class GameEngine:
         return f"Switched to {self.world.world_name}"
 
     def _build_system_prompt(self) -> str:
+        if self.world is None:
+            return ""
         if not self.has_character:
             return self.world.get_system_prompt(Character())
         return self.world.get_system_prompt(self.character)
@@ -185,6 +207,9 @@ class GameEngine:
         """
         if not self.has_character:
             yield "⚠️ Please create a character first!"
+            return
+        if self.world is None:
+            yield "⚠️ No world selected!"
             return
 
         self._init_game()
@@ -244,15 +269,15 @@ class GameEngine:
         """Save current game. Returns file path."""
         if not self.has_character:
             raise ValueError("No character to save")
-        return save_game(self.character, self.world_id, self.messages)
+        wid = self.world_id or "dnd"
+        return save_game(self.character, wid, self.messages)
 
     def load(self, filepath: str) -> str:
         """Load game from file. Returns status message."""
         data = load_game(filepath)
         self.character = data["character"]
-        self.world_id = data["world_id"]
+        self.world_id = data.get("world_id") or "dnd"
         self.world = get_world(self.world_id)
-        self.world_selected = True
         self.messages = data.get("messages", [])
         self._restore_quick_actions()
         self._initialized = True
