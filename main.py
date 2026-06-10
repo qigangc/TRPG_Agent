@@ -1,3 +1,4 @@
+import argparse
 import logging
 import sys
 from pathlib import Path
@@ -14,6 +15,10 @@ logger = logging.getLogger(__name__)
 
 
 def main():
+    parser = argparse.ArgumentParser(description="TRPG Agent (FastAPI)")
+    parser.add_argument("--port", "-p", type=int, default=7860, help="Server port (default: 7860)")
+    args = parser.parse_args()
+
     logger.info("Starting TRPG Agent (FastAPI)...")
 
     if not Config.ZHIPU_API_KEY:
@@ -23,11 +28,11 @@ def main():
         )
 
     import uvicorn
-    logger.info("TRPG running at http://127.0.0.1:7860/main")
+    logger.info(f"TRPG running at http://127.0.0.1:{args.port}/main")
     uvicorn.run(
         "app:app",
         host="127.0.0.1",
-        port=7860,
+        port=args.port,
         workers=1,
         log_level="info",
     )
