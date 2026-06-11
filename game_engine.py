@@ -8,6 +8,7 @@ from config import Config
 from llm_client import LLMClient
 from rules.character import Character
 from rules.events import make_check_with_roll, CheckResult, ATTRIBUTE_CN
+from schemas.game_action import GameAction
 from storage import save_game, load_game
 from worlds import get_world, WORLD_REGISTRY
 from worlds.base import WorldBase
@@ -22,6 +23,7 @@ class GameEngine:
         self.world: Optional[WorldBase] = None
         self.messages: List[Dict[str, str]] = []
         self.last_quick_actions: List[str] = []
+        self.last_game_action: Optional[GameAction] = None
         self.llm: Optional[LLMClient] = None
         self._initialized = False
         self.pending_check: Optional[Dict] = None
@@ -131,6 +133,7 @@ class GameEngine:
         self.character = c
         self.messages = []
         self.last_quick_actions = []
+        self.last_game_action = None
         self._initialized = False
         self.pending_check = None
         self._pending_exp = None
@@ -156,6 +159,7 @@ class GameEngine:
         self.world = None
         self.messages = []
         self.last_quick_actions = []
+        self.last_game_action = None
         self._initialized = False
         self.pending_check = None
         self._pending_exp = None
@@ -169,6 +173,7 @@ class GameEngine:
         self.world = get_world(world_id)
         self.messages = []
         self.last_quick_actions = []
+        self.last_game_action = None
         self._initialized = False
         self.pending_check = None
         self._pending_exp = None
@@ -203,7 +208,7 @@ class GameEngine:
     def process_input(self, user_input: str) -> Generator[str, None, None]:
         """
         Process user input and yield response chunks.
-        Handles check requests, exp rewards, inspiration, breakthroughs.
+        流式输出纯文本 → 完成后 chat_structured() 获取 GameAction → 处理游戏效果。
         """
         if not self.has_character:
             yield "⚠️ Please create a character first!"
@@ -220,6 +225,7 @@ class GameEngine:
         llm = self._ensure_llm()
         system_prompt = self._build_system_prompt()
 
+        # 阶段 1：流式输出纯文本
         full_response = ""
         try:
             for chunk in llm.chat_stream(system_prompt, self.messages):
@@ -230,8 +236,19 @@ class GameEngine:
             yield error_msg
             full_response += error_msg
 
-        self.messages.append({"role": "assistant", "content": full_response})
-        self._process_ai_output(full_response)
+        # 阶段 2：结构化解析，获取 GameAction
+        try:
+            action = llm.chat_structured(system_prompt, self.messages)
+        except Exception as e:
+            logger.warning(f"chat_structured failed: {e}, falling back to raw text")
+            # 回退：创建仅含 narrative 的 GameAction
+            action = GameAction(narrative=full_response)
+
+        # 存入 messages 的是干净的 narrative（不含标签）
+        self.messages.append({"role": "assistant", "content": action.narrative})
+        self._process_ai_output(action)
+        self.last_game_action = action
+        self.last_quick_actions = action.quick_actions
         self._pending_exp = self.hidden_exp_gain()
 
     def _update_scene(self, text: str) -> None:
@@ -243,23 +260,30 @@ class GameEngine:
         if scene_match:
             self.character.current_scene = scene_match.group(1).strip()
 
-    def _process_ai_output(self, text: str) -> None:
-        """Process tagged commands in AI output (exp, inspiration, breakthrough, scene)."""
+    def _process_ai_output(self, action: GameAction) -> None:
+        """从 GameAction 结构化字段处理 exp、inspiration、breakthrough、scene。"""
         if not self.has_character:
             return
 
-        llm = self._ensure_llm()
-        self._update_scene(text)
+        # 场景更新：优先使用 GameAction.scene，回退到正则解析
+        if action.scene:
+            self.character.current_scene = action.scene.strip()
+        else:
+            self._update_scene(action.narrative)
 
-        for amount in llm.parse_exp_rewards(text):
-            leveled = self.character.gain_exp(amount)
-            logger.info(f"Character gained {amount} exp. Leveled up: {leveled}")
+        # 经验奖励
+        if action.exp_reward:
+            leveled = self.character.gain_exp(action.exp_reward)
+            logger.info(f"Character gained {action.exp_reward} exp. Leveled up: {leveled}")
 
-        for amount in llm.parse_inspiration(text):
-            self.character.inspiration += amount
-            logger.info(f"Character gained {amount} inspiration dice")
+        # 激励骰
+        if action.inspiration:
+            self.character.inspiration += action.inspiration
+            logger.info(f"Character gained {action.inspiration} inspiration dice")
 
-        for attr in llm.parse_breakthrough(text):
+        # 突破
+        if action.breakthrough:
+            attr = action.breakthrough
             if hasattr(self.character, attr):
                 current = getattr(self.character, attr)
                 setattr(self.character, attr, current + 2)

@@ -394,39 +394,27 @@ async def api_chat_stream(body: ChatStreamBody, request: Request):
 
     async def event_generator():
         try:
-            llm = engine._ensure_llm()
-            full_response = ""
-            last_display = ""
-
             sync_gen = engine.process_input(message)
             async for chunk in iterate_in_threadpool(sync_gen):
-                full_response += chunk
-                display = llm.strip_tags(full_response)
-                if len(display) > len(last_display):
-                    delta = display[len(last_display):]
-                    last_display = display
-                    if delta:
-                        yield _sse("chunk", {"text": delta})
+                if chunk:
+                    yield _sse("chunk", {"text": chunk})
 
                 if await request.is_disconnected():
                     # Drain remaining chunks without emitting, per full-generation policy
                     pass
 
-            check_requests = llm.parse_check_requests(full_response)
-            source_for_actions = full_response
-
-            if check_requests:
-                req = check_requests[0]
-                engine.set_pending_check(req["attribute"], req["dc"])
+            action = engine.last_game_action
+            if action and action.check:
+                engine.set_pending_check(action.check.attribute, action.check.dc)
                 yield _sse("check_request", {
-                    "attribute": req["attribute"],
-                    "dc": req["dc"],
-                    "attribute_label": ATTRIBUTE_CN.get(req["attribute"], req["attribute"]),
-                    "modifier": engine.character.get_modifier(req["attribute"]),
+                    "attribute": action.check.attribute,
+                    "dc": action.check.dc,
+                    "attribute_label": ATTRIBUTE_CN.get(action.check.attribute, action.check.attribute),
+                    "modifier": engine.character.get_modifier(action.check.attribute),
                 })
                 # 跳过 follow-up LLM 调用，等待前端骰子结果
             else:
-                actions = llm.parse_quick_actions(source_for_actions)
+                actions = action.quick_actions if action else []
                 engine.last_quick_actions = actions
                 yield _sse("actions", {"actions": actions})
                 yield _sse("done", {})
@@ -471,28 +459,15 @@ async def api_check_resolve(body: CheckResolveBody, request: Request):
             engine.messages.append({"role": "user", "content": check_msg})
 
             system_prompt = engine._build_system_prompt()
-            follow_up = ""
-            follow_last_display = ""
 
-            follow_gen = llm.chat_stream(system_prompt, engine.messages)
-            async for chunk in iterate_in_threadpool(follow_gen):
-                follow_up += chunk
-                display = llm.strip_tags(follow_up)
-                if len(display) > len(follow_last_display):
-                    delta = display[len(follow_last_display):]
-                    follow_last_display = display
-                    if delta:
-                        yield _sse("chunk", {"text": delta})
+            action = llm.chat_structured(system_prompt, engine.messages)
+            yield _sse("chunk", {"text": action.narrative})
 
-                if await request.is_disconnected():
-                    pass
-
-            engine.messages.append({"role": "assistant", "content": follow_up})
-            engine._process_ai_output(follow_up)
-
-            actions = llm.parse_quick_actions(follow_up)
-            engine.last_quick_actions = actions
-            yield _sse("actions", {"actions": actions})
+            engine.messages.append({"role": "assistant", "content": action.narrative})
+            engine._process_ai_output(action)
+            engine.last_game_action = action
+            engine.last_quick_actions = action.quick_actions
+            yield _sse("actions", {"actions": action.quick_actions})
 
             # 隐藏经验增长
             pending_exp = engine._pending_exp
@@ -709,22 +684,19 @@ async def test_model_connection(body: ModelTestRequest):
         return JSONResponse({"ok": False, "error": "API Key 为空"}, status_code=400)
 
     try:
-        from zhipuai import ZhipuAI
-        client = ZhipuAI(api_key=api_key)
-        t0 = time.time()
-        resp = client.chat.completions.create(
+        from langchain_openai import ChatOpenAI
+
+        client = ChatOpenAI(
+            openai_api_key=api_key,
             model=model_name,
-            messages=[{"role": "user", "content": "ping"}],
             max_tokens=8,
             temperature=0.1,
-            stream=False,
+            openai_api_base="https://open.bigmodel.cn/api/paas/v4/",
         )
+        t0 = time.time()
+        resp = client.invoke([{"role": "user", "content": "ping"}])
         latency_ms = int((time.time() - t0) * 1000)
-        sample = ""
-        try:
-            sample = (resp.choices[0].message.content or "").strip()[:60]
-        except Exception:
-            sample = ""
+        sample = (resp.content or "").strip()[:60]
         return {"ok": True, "latency_ms": latency_ms, "sample": sample, "model": model_name}
     except Exception as e:
         logger.warning("model test failed: %s", e)
