@@ -6,7 +6,9 @@
 
 ## Introduction
 
-TRPG Agent is a local text-based tabletop role-playing game agent powered by Zhipu AI (GLM-4). The web interface is built with FastAPI, Jinja2, Vanilla JS, and SSE. AI narration streams through `/api/chat/stream`, and saves are stored as local JSON files under `saves/`.
+TRPG Agent is a local text-based tabletop role-playing game agent powered by large language models. The web interface is built with FastAPI, Jinja2, Vanilla JS, and SSE. AI narration streams through `/api/chat/stream`, and saves are stored as local JSON files under `saves/`.
+
+The LLM layer uses **LangChain**'s `ChatOpenAI` to access GLM-series models through Zhipu AI's OpenAI-compatible endpoint, and uses Pydantic-based `GameAction` structured outputs to decouple AI narration from game mechanics — replacing the older Chinese tag-parsing approach.
 
 The entry point is `TRPG_Agent/main.py`. Run `python main.py` in the project directory, then open `http://localhost:7860/main` or `http://127.0.0.1:7860/main`.
 
@@ -14,11 +16,19 @@ The entry point is `TRPG_Agent/main.py`. Run `python main.py` in the project dir
 
 - Supports two world settings: DND and CNC
 - AI acts as the DM/GM for narration and action feedback
-- Streams chat responses through SSE
+- Streams chat responses through SSE (narration streamed first, then a structured JSON returns metadata such as checks, XP, and quick actions)
 - Supports d20 checks, critical success, and critical failure
 - Supports character creation, attribute allocation, XP, and leveling
-- Supports local JSON save/load files
-- Provides model and rule settings pages
+- Supports local JSON save/load (legacy tag-format saves remain compatible)
+- Model and rule settings pages with live `.env` hot-write
+
+## Tech Stack
+
+- **Backend**: FastAPI + Uvicorn + Jinja2
+- **Frontend**: Vanilla JS + server-side rendering (no SPA, no build step)
+- **LLM framework**: LangChain (`langchain-openai` + `langchain-core`)
+- **Structured output**: Pydantic v2 + `ChatOpenAI.with_structured_output()`
+- **Model provider**: Zhipu AI (GLM-4 and others) via the OpenAI-compatible endpoint
 
 ## Quick Start
 
@@ -51,6 +61,17 @@ Open: `http://localhost:7860/main`
 
 Main streaming endpoint: `POST /api/chat/stream`, returning `text/event-stream`.
 
+### SSE Event Types
+
+| Event | Description |
+|---|---|
+| `chunk` | Incremental narration text (from the AI's streaming output) |
+| `check_request` | Notifies the frontend to open the dice prompt when a check is triggered |
+| `check` | Resolved dice check result (attribute, DC, roll value, success flag) |
+| `actions` | Quick action buttons for the current turn (up to 4) |
+| `done` | Stream finished normally |
+| `error` | Stream aborted with an error payload |
+
 ## Game Flow
 
 1. Choose DND or CNC on `/main`
@@ -60,15 +81,34 @@ Main streaming endpoint: `POST /api/chat/stream`, returning `text/event-stream`.
 5. d20 checks are resolved automatically when triggered
 6. Game state can be saved as JSON under `saves/`
 
+## AI Output Protocol
+
+The AI's reply is parsed into the following structured object (`schemas/game_action.py:GameAction`):
+
+```python
+class GameAction(BaseModel):
+    narrative: str                              # Clean DM narration (no tags)
+    check: Optional[CheckRequest] = None        # Triggered attribute check (attribute + dc)
+    exp_reward: Optional[int] = None            # XP reward
+    inspiration: Optional[int] = None           # Inspiration die (DND only)
+    breakthrough: Optional[str] = None          # Breakthrough attribute (CNC only)
+    quick_actions: List[str] = []               # Suggested quick actions
+    scene: Optional[str] = None                 # Current scene description
+```
+
+The flow is: stream `narrative` text through SSE → after streaming finishes, run a structured parse to obtain the full `GameAction` → trigger the corresponding game mechanics (checks, XP gain, refreshing quick action buttons, etc.).
+
+Legacy tag-format saves (containing Chinese tags such as `[检定:...]` and `[快捷:...]`) remain loadable through the retained `strip_tags()` and `parse_quick_actions()` helpers.
+
 ## World Settings
 
 ### DND
 
-DND is an epic and solemn medieval fantasy setting. The AI uses the check tag: `[检定:属性 DC=N]`.
+DND is an epic, solemn medieval fantasy setting. The AI triggers attribute checks via the `GameAction.check` field.
 
 ### CNC
 
-CNC is a lighthearted Chinese fantasy setting with a joking tone. The AI uses the challenge tag: `[挑战:属性 DC=N]`.
+CNC is a lighthearted Chinese fantasy setting with a joking tone. The AI triggers challenges via `GameAction.check` and attribute breakthroughs via `GameAction.breakthrough`.
 
 ## Rules
 
@@ -108,34 +148,39 @@ Attribute modifiers are calculated as `(score - 10) // 2`.
 
 Configuration is loaded from `.env` and `config.py`. `ZHIPU_API_KEY` is required.
 
-| Variable | Description |
-|---|---|
-| `ZHIPU_API_KEY` | Zhipu API key, required |
-| `MODEL_NAME` | Model name |
-| `MAX_HISTORY` | Conversation rounds kept in history |
-| `INITIAL_ATTRIBUTE_POINTS` | Initial attribute points |
-| `TEMPERATURE` | Model sampling temperature |
-| `MAX_TOKENS` | Maximum tokens per response |
-| `MAX_RETRIES` | API retry count |
-| `EXP_THRESHOLD` | Base XP threshold for leveling |
+| Variable | Default | Description |
+|---|---|---|
+| `ZHIPU_API_KEY` | — | Zhipu API key, required |
+| `MODEL_NAME` | `glm-4` | Model name |
+| `MAX_HISTORY` | `20` | Conversation rounds kept in history |
+| `INITIAL_ATTRIBUTE_POINTS` | `20` | Initial attribute points |
+| `TEMPERATURE` | `0.85` | Model sampling temperature |
+| `MAX_TOKENS` | `2048` | Maximum tokens per response |
+| `MAX_RETRIES` | `3` | API retry count |
+| `STREAM_TIMEOUT` | `60` | Streaming response timeout in seconds |
+| `EXP_THRESHOLD` | `100` | Base XP threshold for leveling |
+
+The settings pages allow live edits and can optionally persist them to `.env` via `env_writer.upsert_env()` (preserving original line order and comments). After changing `MODEL_NAME` or `ZHIPU_API_KEY`, the `LLMClient` is rebuilt on the next chat call.
 
 ## Project Structure
 
 ```text
 TRPG_Agent/
-├── main.py
-├── app.py
-├── config.py
-├── game_engine.py
-├── llm_client.py
-├── storage.py
-├── env_writer.py
-├── rules/
-├── worlds/
-├── templates/
-├── static/
-├── saves/
-├── docs/
+├── main.py              # uvicorn entry point
+├── app.py               # FastAPI routes, SSE endpoint, JSON APIs
+├── config.py            # Configuration loading
+├── game_engine.py       # Game state, message history, check execution
+├── llm_client.py        # LangChain ChatOpenAI + structured output
+├── storage.py           # JSON save I/O
+├── env_writer.py        # .env hot-write helper
+├── schemas/             # Pydantic structured output models
+│   └── game_action.py
+├── rules/               # Dice, character, check rules
+├── worlds/              # World settings (DND, CNC) + system prompts
+├── templates/           # Jinja2 HTML templates
+├── static/              # CSS + JS
+├── saves/               # JSON saves
+├── docs/                # Multilingual READMEs + roadmaps
 ├── requirements.txt
 └── .env.example
 ```
@@ -143,12 +188,14 @@ TRPG_Agent/
 ## Development Notes
 
 - The current web UI uses FastAPI, Jinja2, Vanilla JS, and SSE
-- `main.py` starts uvicorn on `127.0.0.1:7860` by default
-- Pages are rendered by server-side Jinja2 templates
+- `main.py` starts uvicorn on `127.0.0.1:7860` by default with a single worker
+- Pages are rendered by server-side Jinja2 templates; there is no frontend build
 - Chat streaming uses `/api/chat/stream`
 - Saves are JSON files under `saves/`
 - Available worlds are DND and CNC
 - Prefer the settings pages or `.env` for model and rule configuration
+- All browser tabs share a single `GameEngine` instance (local single-user design)
+- The `_LEGACY_*` regex constants, `strip_tags()`, and `parse_quick_actions()` in `llm_client.py` are retained solely for backward compatibility with legacy tag-format saves
 
 ## Roadmap Links
 
