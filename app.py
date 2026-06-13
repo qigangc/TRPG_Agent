@@ -178,8 +178,8 @@ async def main_page(request: Request):
     blocked = _redirect_for_phase("main")
     if blocked:
         return blocked
-    return templates.TemplateResponse("main.html", {
-        "request": request, "current_page": "main", "nav_state": _nav_state(),
+    return templates.TemplateResponse(request, "main.html", {
+        "current_page": "main", "nav_state": _nav_state(),
     })
 
 
@@ -188,8 +188,8 @@ async def save_page(request: Request):
     blocked = _redirect_for_phase("save")
     if blocked:
         return blocked
-    return templates.TemplateResponse("save.html", {
-        "request": request, "current_page": "save", "nav_state": _nav_state(),
+    return templates.TemplateResponse(request, "save.html", {
+        "current_page": "save", "nav_state": _nav_state(),
     })
 
 
@@ -198,8 +198,8 @@ async def character_page(request: Request):
     blocked = _redirect_for_phase("createCharacter")
     if blocked:
         return blocked
-    return templates.TemplateResponse("character.html", {
-        "request": request, "current_page": "createCharacter", "nav_state": _nav_state(),
+    return templates.TemplateResponse(request, "character.html", {
+        "current_page": "createCharacter", "nav_state": _nav_state(),
     })
 
 
@@ -208,8 +208,8 @@ async def game_page(request: Request):
     blocked = _redirect_for_phase("game")
     if blocked:
         return blocked
-    return templates.TemplateResponse("game.html", {
-        "request": request, "current_page": "game", "nav_state": _nav_state(),
+    return templates.TemplateResponse(request, "game.html", {
+        "current_page": "game", "nav_state": _nav_state(),
     })
 
 
@@ -218,24 +218,24 @@ async def game_page(request: Request):
 @app.get("/settings")
 async def settings_page(request: Request):
     return templates.TemplateResponse(
-        "settings.html",
-        {"request": request, "current_page": "settings", "nav_state": _nav_state()},
+        request, "settings.html",
+        {"current_page": "settings", "nav_state": _nav_state()},
     )
 
 
 @app.get("/settings/model")
 async def settings_model_page(request: Request):
     return templates.TemplateResponse(
-        "settings_model.html",
-        {"request": request, "current_page": "settings", "nav_state": _nav_state()},
+        request, "settings_model.html",
+        {"current_page": "settings", "nav_state": _nav_state()},
     )
 
 
 @app.get("/settings/rules")
 async def settings_rules_page(request: Request):
     return templates.TemplateResponse(
-        "settings_rules.html",
-        {"request": request, "current_page": "settings", "nav_state": _nav_state()},
+        request, "settings_rules.html",
+        {"current_page": "settings", "nav_state": _nav_state()},
     )
 
 
